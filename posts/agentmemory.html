@@ -97,14 +97,14 @@
             <p>Letta / MemGPT (22.8K ⭐) is the canonical example, with its core-memory / archival split. LangChain and LlamaIndex offer thinner "memory" primitives bolted onto wider frameworks; neither is positioned as a memory system in its own right.</p>
           </div>
         </div>
-        <p>agentmemory stakes out a third position: a memory daemon that runs as a local process, exposes state over REST + MCP + an iii-engine WebSocket, and integrates via hooks into the lifecycle events of coding assistants. The unit of integration isn't from agentmemory import Memory — it's "drop these .mjs hook scripts into your agent config and the daemon will be called on every PostToolUse, SessionStart, Stop event."</p>
+        <p>agentmemory stakes out a third position: a memory daemon that runs as a local process, exposes state over REST + MCP + an iii-engine WebSocket, and integrates via hooks into the lifecycle events of coding assistants. The unit of integration isn't from agentmemory import Memory — it's "drop these .mjs hook scripts (ES-module JavaScript) into your agent config and the daemon will be called on every PostToolUse, SessionStart, Stop event."</p>
         <p>That positioning is unusual enough to be worth the deep dive. Whether it is better than Mem0 / Letta / Zep depends entirely on whether you live inside the coding-agent ecosystem it targets.</p>
 
         <h2>2 · Task — what it claims to solve</h2>
         <p>The README's pitch is unsubtle: "Your coding agent remembers everything. No more re-explaining."</p>
         <p>Concretely, the headline claims are:</p>
         <ul>
-          <li>95.2% R@5 retrieval on LongMemEval-S, 88.2% MRR.</li>
+          <li>95.2% R@5 retrieval (the right memory lands in the top 5 results) on LongMemEval-S, 88.2% MRR.</li>
           <li>~92% token reduction vs pasting full context; ~$10/yr running cost with local embeddings.</li>
           <li>Zero external databases — "SQLite + iii-engine".</li>
           <li>Auto-capture via 12 Claude Code hooks + 22 OpenCode hooks so the user "never has to call add()".</li>
@@ -252,7 +252,7 @@ async set&lt;T&gt;(scope: string, key: string, value: T): Promise&lt;T&gt; {
             </tbody>
           </table>
         </div>
-        <p>Read the star count carefully. 14K stars in three months is real attention — the Trendshift badge, the author's viral gist ("1,200 stars / 172 forks"), his DevRel background (GDE @ Google Cloud, CNCF Ambassador, Docker Captain per his profile), and his employer (iii.dev, the same organisation behind the iii-engine the package depends on) together explain it. Stars are a popularity signal, not a quality signal; in this case they're correlated with effective marketing and an audience that already follows the author. The npm downloads — climbing from ~200/day in mid-April to ~5K/day on 2026-05-18 — are the better adoption signal, and they're also strong but at a different scale than the star count suggests.</p>
+        <p>Read the star count carefully. 14K stars in three months is real attention — the Trendshift badge, the author's separate viral gist (itself at 1,200 stars / 172 forks), his DevRel background (GDE @ Google Cloud, CNCF Ambassador, Docker Captain per his profile), and his employer (iii.dev, the same organisation behind the iii-engine the package depends on) together explain it. Stars are a popularity signal, not a quality signal; in this case they're correlated with effective marketing and an audience that already follows the author. The npm downloads — climbing from ~200/day in mid-April to ~5K/day on 2026-05-18 — are the better adoption signal, and they're also strong but at a different scale than the star count suggests.</p>
         <p>The release cadence is the other thing to weigh. Eight releases in four days, including a v0.9.20 hotfix that reverts a v0.9.19 change after "post-merge field-testing surfaced the underlying issue", is the cadence of active prototyping, not a stable shipping pattern. Pair that with the fact that the project has never crossed 1.0 (it's been v0.9.x since the very first cuts) and you should expect breaking changes between point releases.</p>
 
         <h3>4.2 Testing &amp; CI</h3>

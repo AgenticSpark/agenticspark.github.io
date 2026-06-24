@@ -98,7 +98,6 @@
         <p>colbymchenry/codegraph (31k ⭐ in four months, MIT, TypeScript) stakes a specific position in that bake-off: stay in TypeScript so the same code is the library, the CLI, and the MCP server; ship a vendored Node runtime so installation is one curl; speak only MCP + stdio so it works the same in every supported agent. That positioning is what this report unpacks.</p>
 
         <h2>2 · Task — what CodeGraph commits to solving</h2>
-        <p>Four concrete deliverables, stripped of marketing.</p>
         <p>Stripped of the README's pitch, the project commits to four concrete deliverables:</p>
         <ol>
           <li>A deterministic knowledge graph from tree-sitter, not LLM summaries. Every node and edge is derived from the AST so the index is reproducible and stable across runs.</li>
@@ -239,7 +238,7 @@ edges.push({
         <p>That comment is the whole project distilled into eight lines. Local-first code intelligence is a measurement problem before it is a tooling problem, and the comments are written for whoever runs the next benchmark.</p>
 
         <h3>3.6 Auto-sync — the watcher that knows it's behind</h3>
-        <p>The third-most-cited issue in the codebase (#276, #407, #449, #450) is the file watcher. It uses chokidar with the same buildDefaultIgnore filter the indexer uses, so the inotify set the kernel registers is exactly the set you index — the fix for #276 where a recursive fs.watch on a 10k-file monorepo exhausted the inotify budget.</p>
+        <p>The third-most-cited issue in the codebase (#276, #407, #449, #450) is the file watcher. It uses chokidar with the same buildDefaultIgnore filter the indexer uses, so the inotify set (the file-change watches the Linux kernel tracks per process) is exactly the set you index — the fix for #276 where a recursive fs.watch on a 10k-file monorepo exhausted the inotify budget.</p>
         <p>Debounce is 2 seconds by default, clamped to [100 ms, 60 s] via CODEGRAPH_WATCH_DEBOUNCE_MS. The smart bit is the per-file staleness banner: in the brief window between an edit and the next sync, any MCP tool response that would reference a still-pending file prepends a ⚠️ banner naming the file and telling the agent to Read it directly (validated against Claude Code, where the agent literally says "Reading the file directly for the live content"); pending files not referenced by the response surface as a small footer instead. The agent gets an explicit signal either way.</p>
 
         <h3>3.7 The shared daemon — issue #411 and why proxies exist now</h3>
