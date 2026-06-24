@@ -63,7 +63,7 @@
           </div>
           <div class="callout">
             <h4>Why it's interesting</h4>
-            <p>It makes cycles a first-class feature. A ReAct agent is not a pipeline; it is "call model → maybe call tool → call model again → maybe stop." LangGraph models that directly with conditional edges, loops, reducers, checkpoints, interrupts, and streaming. The compiled graph runs on a Pregel-inspired runtime with super-steps, inactive/active nodes, and message passing, which gives the library a real execution model rather than just callback spaghetti.</p>
+            <p>It makes cycles a first-class feature. A ReAct agent is not a pipeline; it is "call model → maybe call tool → call model again → maybe stop." LangGraph models that directly with conditional edges, loops, reducers, checkpoints, interrupts, and streaming. The compiled graph runs on a Pregel-inspired runtime (Pregel is Google's graph-compute model) with super-steps, inactive/active nodes, and message passing, which gives the library a real execution model rather than just callback spaghetti.</p>
           </div>
           <div class="callout">
             <h4>Biggest concerns</h4>
@@ -269,7 +269,7 @@ graph.invoke(Command(resume="yes"), cfg)   # interrupt() returns "yes"; the node
               <tr><th>Option</th><th>What it is</th><th>Relative to LangGraph</th></tr>
             </thead>
             <tbody>
-              <tr><td>Plain Python loop</td><td>Hand-written <code>while</code> loop around model/tool calls</td><td>Best for simple agents; most debuggable until durability, branching, or HITL becomes real</td></tr>
+              <tr><td>Plain Python loop</td><td>Hand-written <code>while</code> loop around model/tool calls</td><td>Best for simple agents; most debuggable until durability, branching, or human-in-the-loop (HITL) becomes real</td></tr>
               <tr><td>LlamaIndex Workflows</td><td>Event-driven workflow system in the LlamaIndex ecosystem</td><td>Natural if your app is already LlamaIndex-heavy; less centered on Pregel-style shared graph state</td></tr>
               <tr><td>CrewAI</td><td>Role-based multi-agent framework with crews and tasks</td><td>Higher-level and easier to demo; less precise control over state, edges, and durable execution</td></tr>
               <tr><td>AutoGen</td><td>Multi-agent conversation framework from Microsoft</td><td>Good for agent-to-agent chat patterns; LangGraph is more explicit as a state-machine runtime</td></tr>
