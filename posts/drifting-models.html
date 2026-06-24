@@ -62,7 +62,7 @@
         <div class="callout-grid">
           <div class="callout">
             <h4>Same problem, different axis</h4>
-            <p>Generative modeling = find f such that the pushforward f#pprior ≈ pdata. Diffusion factors f into many small per-step transformations applied at inference. A Drifting Model keeps f single-pass and lets the training iterations themselves evolve the pushforward distribution.</p>
+            <p>Generative modeling = find f such that the pushforward f#pprior (the distribution of outputs f(ε) when ε ∼ pprior) ≈ pdata. Diffusion factors f into many small per-step transformations applied at inference. A Drifting Model keeps f single-pass and lets the training iterations themselves evolve the pushforward distribution.</p>
           </div>
           <div class="callout">
             <h4>A field that becomes zero at equilibrium</h4>
@@ -115,7 +115,7 @@
         <p>Introduce an explicit field Vp,q(x): ℝd → ℝd that tells each sample how to move:</p>
         <div class="formula"><span class="formula-label">Desired update rule on samples</span>xi+1  =  xi  +  Vp, qi(xi)</div>
         <p>The field depends on the data distribution p and the current pushforward q. We want V = 0 when q = p — that's equilibrium. The paper enforces this via anti-symmetry:</p>
-        <div class="formula"><span class="formula-label">Proposition 3.1 · anti-symmetry implies zero-drift at equilibrium</span>Vp,q(x)  =  −Vq,p(x)   ⇒   q = p ⇒ Vp,q(x) = 0</div>
+        <div class="formula"><span class="formula-label">Proposition 3.1 · anti-symmetry implies zero-drift at equilibrium</span>Vp,q  =  −Vq,p      ⟹      at q = p:  Vp,p = −Vp,p = 0</div>
         <p>Two-line proof: when q = p, the subscripts collapse and Vp,p = −Vp,p, so Vp,p = 0. The converse — that V ≈ 0 implies q ≈ p — is not automatic, but the paper gives sufficient conditions for the specific kernelized construction below (Appendix C.1).</p>
         <p>The ablation in Table 1 is brutal: every variant of V that breaks anti-symmetry fails catastrophically. The property is doing real work.</p>
 
@@ -125,7 +125,7 @@
 V−q(x) = 1/Zq · 𝔼y⁻ ∼ q [ k(x, y⁻) · (y⁻ − x) ]
 
 Vp,q(x)  :=  V+p(x)  −  V−q(x)</div>
-        <p>Reading that algebraically: the sample gets pulled toward the weighted mean of nearby data points and pushed away from the weighted mean of nearby generated peers. k is a similarity kernel — they pick k(x, y) = exp(−‖x − y‖ / τ), normalised with a softmax over y (so it looks just like InfoNCE in contrastive learning). The form is manifestly anti-symmetric.</p>
+        <p>Reading that algebraically: the sample gets pulled toward the weighted mean of nearby data points and pushed away from the weighted mean of nearby generated peers. k is a similarity kernel — they pick k(x, y) = exp(−‖x − y‖ / τ), normalised with a softmax over y (so it looks just like InfoNCE, a standard contrastive-learning loss). The form is manifestly anti-symmetric.</p>
 
         <h3>2.4 · The training loss · a stop-gradient regression that minimises ‖V‖²</h3>
         <p>At equilibrium, the generator should satisfy the fixed-point f(ε) = f(ε) + V(f(ε)). Turn that into a loss by stopping the gradient on the target:</p>

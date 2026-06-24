@@ -149,7 +149,7 @@ if mode == 0:                                # --- denoise branch ---
 else:                                        # --- decode branch ---
     z1_tilde = perturb(x, sigma_small)       # near-data sample
     x_hat    = x_theta(z1_tilde, 1.0, mode=decode)
-    logits   = z1_tilde @ W                  # or x_hat @ W (Eq. 9)
+    logits   = x_hat @ W                     # W · x̂  (Eq. 9)
     loss     = cross_entropy(logits, s)
 
 loss.backward(); optimizer.step()</code></pre>

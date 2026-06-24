@@ -143,7 +143,7 @@
         <p>You want the joint distribution of the latent embeddings Z ∈ ℝN×B×d to look like an isotropic Gaussian 𝒩(0, I) — which by construction can never collapse to a point.</p>
         <p>Testing normality directly in d dimensions is hard. Univariate normality tests, on the other hand, are well-studied.</p>
         <p>The Cramér–Wold theorem says: a multivariate distribution is uniquely determined by all its one-dimensional projections. So if every linear projection of your data looks Gaussian, the data is Gaussian.</p>
-        <p>You can't test every projection, so you sketch the space: draw M random unit-norm directions u(m) ∈ 𝕊d−1, project the embeddings, and run the univariate Epps–Pulley normality test T(·) on each 1-D projection. Average the test statistics. Minimise that.</p>
+        <p>You can't test every projection, so you sketch the space: draw M random unit-norm directions u(m) ∈ 𝕊d−1, project the embeddings, and run the univariate Epps–Pulley normality test T(·) on each 1-D projection. Average the test statistics — a lower value means more Gaussian — then minimise it.</p>
         <p>Default: M = 1024 projections, λ = 0.1. The number of projections has negligible effect on downstream performance — so in practice λ is the only knob.</p>
         <h4>The total objective</h4>
         <div class="formula">ℒLeWM  ≜  ℒpred  +  λ · SIGReg(Z)</div>
@@ -160,7 +160,7 @@
     next_emb  = predictor(emb, actions)            # (B, T, D)
 
     # Term 1 — next-embedding prediction
-    pred_loss   = F.mse_loss(emb[:, 1:] - next_emb[:, :-1])
+    pred_loss   = F.mse_loss(next_emb[:, :-1], emb[:, 1:])
 
     # Term 2 — step-wise SIGReg (anti-collapse, Gaussianity)
     sigreg_loss = mean(SIGReg(emb.transpose(0, 1)))
