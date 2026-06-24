@@ -149,14 +149,21 @@ Per-sample events: /tmp/evallogs/2406...capitals.jsonl</code></pre>
         <h3>3.2 basic/deterministic evals</h3>
         <p>The basic templates are deliberately humble. <code>basic/match.py:Match</code> calls one completion function at temperature 0 and checks whether the sampled answer starts with one of the reference strings. <code>basic/includes.py:Includes</code> accepts an answer if any reference string appears in the completion. <code>basic/fuzzy_match.py:FuzzyMatch</code> handles looser containment-style matching; <code>basic/json_match.py:JsonMatch</code> compares parsed JSON while ignoring key order and whitespace outside values.</p>
         <p>These are not glamorous metrics, but they are useful for the right shape of task: multiple choice, short factual QA, classification, extraction with constrained outputs, and regression tests for prompts that should produce a narrow answer. They also make an important engineering claim: if a deterministic scorer is sufficient, use it. Do not pay a grader model to create ambiguity you do not need.</p>
-        <pre><code># the four deterministic scorers, by how they compare completion vs ideal:
-# Match      -> completion must START WITH an ideal string
-# Includes   -> any ideal string appears ANYWHERE in the completion
-# FuzzyMatch -> normalized containment, checked in either direction
-# JsonMatch  -> json.loads(completion) equals ideal, order/whitespace-insensitive
-
-# a JsonMatch sample — graded structurally, not as raw text:
-{"input": [{"role": "user", "content": "Return name and age as JSON."}],
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Scorer</th><th>A completion passes when it…</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>Match</code></td><td><strong>starts with</strong> one of the ideal strings</td></tr>
+              <tr><td><code>Includes</code></td><td><strong>contains</strong> an ideal string anywhere</td></tr>
+              <tr><td><code>FuzzyMatch</code></td><td>matches by normalized containment, in <strong>either direction</strong></td></tr>
+              <tr><td><code>JsonMatch</code></td><td>parses to JSON <strong>equal</strong> to ideal — key order and whitespace ignored</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>A <code>JsonMatch</code> sample is graded structurally rather than as raw text:</p>
+        <pre><code>{"input": [{"role": "user", "content": "Return name and age as JSON."}],
  "ideal": "{\"name\": \"Ada\", \"age\": 36}"}</code></pre>
 
         <h3>3.3 model-graded evals &amp; grading prompts</h3>
@@ -166,19 +173,29 @@ Per-sample events: /tmp/evallogs/2406...capitals.jsonl</code></pre>
         <pre><code># evals/registry/modelgraded/fact.yaml  (shape)
 fact:
   prompt: |-
-    You are comparing a submitted answer to an expert answer.
+    Compare the [Submission] to the [Expert] answer on factual content only;
+    ignore style and phrasing.
       [Question]:   {input}
       [Expert]:     {ideal}
       [Submission]: {completion}
-    Compare only the factual content; ignore style and phrasing. Pick one:
-      (A) Submission is a SUBSET of the expert answer, fully consistent
-      (B) Submission is a SUPERSET of the expert answer, fully consistent
-      (C) Submission contains the SAME details as the expert answer
-      (D) Submission DISAGREES with the expert answer
-      (E) Answers differ, but the differences do not matter for factuality
-    Respond with a single letter.
+    Reply with a single letter, A-E, using the rubric below.
   choice_strings: ABCDE
   choice_scores: { A: 1.0, B: 1.0, C: 1.0, D: 0.0, E: 1.0 }</code></pre>
+        <p>The five choices, and the score each one maps to:</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Choice</th><th>The submission…</th><th>Score</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>A</code></td><td>is a <strong>subset</strong> of the expert answer, fully consistent</td><td>1.0</td></tr>
+              <tr><td><code>B</code></td><td>is a <strong>superset</strong> of the expert answer, fully consistent</td><td>1.0</td></tr>
+              <tr><td><code>C</code></td><td>contains the <strong>same</strong> details as the expert answer</td><td>1.0</td></tr>
+              <tr><td><code>D</code></td><td><strong>disagrees</strong> with the expert answer</td><td>0.0</td></tr>
+              <tr><td><code>E</code></td><td>differs, but the differences <strong>don't matter</strong> for factuality</td><td>1.0</td></tr>
+            </tbody>
+          </table>
+        </div>
         <figure class="diagram"><svg viewBox="0 0 760 320" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahev2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aaev2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
         <rect x="30" y="46" width="150" height="64" rx="8" class="d-box"/><text x="105" y="74" text-anchor="middle" class="d-title">sample</text><text x="105" y="95" text-anchor="middle" class="d-sub">input, ideal</text>
         <rect x="220" y="46" width="160" height="64" rx="8" class="d-box-accent"/><text x="300" y="74" text-anchor="middle" class="d-title">policy model</text><text x="300" y="95" text-anchor="middle" class="d-sub">generate answer</text>
