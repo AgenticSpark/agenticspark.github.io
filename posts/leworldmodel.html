@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LeWorldModel — Ethan</title>
+  <meta name="description" content="The first Joint-Embedding Predictive Architecture that trains stably end-to-end from raw pixels using only two loss terms — and plans up to 48× faster than foundation-model-based world models." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/leworldmodel.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="LeWorldModel" />
+  <meta property="og:description" content="The first Joint-Embedding Predictive Architecture that trains stably end-to-end from raw pixels using only two loss terms — and plans up to 48× faster than foundation-model-based world models." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/leworldmodel.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="LeWorldModel" />
+  <meta name="twitter:description" content="A JEPA world-model explainer: what it is, how it works, why it matters." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">Paper · arXiv 2603.19312 · World models</span>
+        <h1 class="post-title">LeWorldModel</h1>
+        <p class="post-dek">The first Joint-Embedding Predictive Architecture that trains stably end-to-end from raw pixels using only two loss terms — and plans up to 48× faster than foundation-model-based world models, on a single GPU, with ~15M parameters. A plain-English read in three movements: what it is, how it works, why it matters.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Paper</dt><dd><a href="https://arxiv.org/abs/2603.19312" target="_blank" rel="noopener">arXiv:2603.19312v2</a></dd></div>
+        <div><dt>Authors</dt><dd>Maes · Le Lidec · Scieur · LeCun · Balestriero</dd></div>
+        <div><dt>Affiliation</dt><dd>Mila · NYU · Samsung SAIL · Brown</dd></div>
+        <div><dt>Published</dt><dd>Mar 2026 (v2)</dd></div>
+        <div><dt>Read</dt><dd>May 2026</dd></div>
+      </dl>
+
+      <p class="fig-caption">Encoder maps pixel observations into a Gaussian-regularised latent space; a transformer predictor rolls forward conditioned on actions<span class="fig-sub">Encoder → isotropic-Gaussian latent → action-conditioned predictor. The two arrows are the whole training story.</span></p>
+
+      <div class="prose">
+        <div class="sec-eyebrow"><span class="sec-num">01</span> What</div>
+        <h2>What is LeWorldModel?</h2>
+        <p>A latent world model — i.e. a learned simulator of an environment — built as a Joint-Embedding Predictive Architecture (JEPA). The contribution isn't a new task; it's a stable, simple recipe for training one of these things end-to-end from raw pixels, without any of the duct-tape that has propped up every previous attempt.</p>
+
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>One picture</h4>
+            <p>An encoder squashes each video frame into a small vector. A transformer predicts the next vector from the current vector plus the action taken. That predicted vector is then compared to the encoder's vector for the next real frame. The whole thing is trained jointly. That is the architecture.</p>
+          </div>
+          <div class="callout">
+            <h4>One loss</h4>
+            <p>Two terms, technically: (1) MSE between predicted-next-embedding and actual-next-embedding; (2) SIGReg — a regulariser that pulls the latent distribution toward an isotropic Gaussian so the encoder can't cheat by collapsing all inputs to the same vector. One effective hyperparameter — the weight λ between them.</p>
+          </div>
+          <div class="callout">
+            <h4>One GPU</h4>
+            <p>About 15M parameters total (~5M ViT-tiny encoder + ~10M transformer predictor). Trains in a few hours on a single GPU. Plans in &lt; 1 second per step using Model-Predictive Control with the Cross-Entropy Method directly in latent space — roughly 48× faster than foundation-model baselines.</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">2</span><span class="label">Loss terms (was 7 in PLDM)</span></div>
+          <div class="stat"><span class="num">1</span><span class="label">Effective hyperparameter · λ</span></div>
+          <div class="stat"><span class="num">~15M</span><span class="label">Total parameters</span></div>
+          <div class="stat"><span class="num">48×</span><span class="label">Faster planning vs DINO-WM</span></div>
+          <div class="stat"><span class="num">+18%</span><span class="label">Push-T success vs PLDM</span></div>
+          <div class="stat"><span class="num">𝒪(log n)</span><span class="label">HP search · vs 𝒪(n⁶) for PLDM</span></div>
+        </div>
+
+        <h3>The vocabulary, in one paragraph each</h3>
+        <h4>World model</h4>
+        <p>A neural network that learns to predict the consequences of actions in an environment. If you have one that's accurate, you can plan by imagining — generating candidate action sequences, rolling them forward in your head, and picking the one that gets you closest to your goal. No more trial-and-error in the real world for every decision.</p>
+        <h4>Joint-Embedding Predictive Architecture (JEPA)</h4>
+        <p>Yann LeCun's 2022 proposal: don't predict pixels. Predict in a learned, compact latent space. A pixel-space world model has to render every leaf and every shadow of the next frame just to plan. A JEPA only has to predict "the abstract idea of the next frame," which is dramatically cheaper and ignores irrelevant detail. The cost: training is tricky. The encoder and predictor have a degenerate solution available — map everything to the same constant. That's called representation collapse.</p>
+        <h4>Representation collapse — the problem JEPAs keep tripping over</h4>
+        <p>If your only loss is "predicted next-embedding ≈ actual next-embedding," the encoder can win by simply outputting the zero vector for every input. Loss → 0. Useless model. Every JEPA paper to date has had to fight this with one of three crutches:</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>EMA + stop-gradient (I-JEPA, V-JEPA)</h4>
+            <p>Use an exponential moving average of the encoder as a stationary target. Block gradients through it. It works in practice but has no clean theoretical story — and adds two more knobs.</p>
+          </div>
+          <div class="callout">
+            <h4>Frozen foundation encoder (DINO-WM, V-JEPA-2)</h4>
+            <p>Skip the problem entirely: freeze a pretrained DINOv2 or similar vision model and only train the predictor on top. Avoids collapse but you inherit whatever the foundation model happened to learn — and lose end-to-end optimisation for your task.</p>
+          </div>
+          <div class="callout">
+            <h4>Multi-term loss (PLDM)</h4>
+            <p>Train end-to-end, but with seven loss terms (variance, covariance, invariance, smoothness, …) borrowed from VICReg. Trainable in principle, brittle in practice, and the loss-weight search is polynomial 𝒪(n⁶).</p>
+          </div>
+        </div>
+        <p>LeWM's answer: none of the above. Train end-to-end. From pixels. With two loss terms. The second term is a principled regulariser borrowed from a 2025 paper called LeJEPA — it asks the latent embeddings to follow an isotropic Gaussian. That alone provably blocks the collapse failure mode, and it requires no EMA, no stop-gradient, no frozen encoder, no auxiliary supervision, no reconstruction loss, no proprioception, no reward. Just pixels, actions, and a normality test.</p>
+
+        <h3>Where it sits in the world-model landscape</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Method</th><th>End-to-end from pixels</th><th>No frozen foundation</th><th>No EMA / stop-grad</th><th>Reward-free (task-agnostic)</th><th>Loss terms</th><th>HP search</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Dreamer / TD-MPC</td><td>✓</td><td>✓</td><td>~</td><td>✗ (needs reward)</td><td>several</td><td>grid</td></tr>
+              <tr><td>DINO-WM / V-JEPA-2</td><td>✗ (frozen DINOv2)</td><td>✗</td><td>✓</td><td>✓</td><td>1–2</td><td>small</td></tr>
+              <tr><td>PLDM</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>7 (VICReg-derived)</td><td>𝒪(n⁶)</td></tr>
+              <tr><td>LeWM (this paper)</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>2 (1 effective)</td><td>𝒪(log n) bisection</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Fig. 2 in the paper, rewritten. The point: LeWM is the only row that ticks every column and still gets away with one knob.</p>
+
+        <div class="sec-eyebrow"><span class="sec-num">02</span> How</div>
+        <h2>How does it work?</h2>
+        <p>Two parts: how the model is trained, and how it is used at inference time to actually do anything. The training is the new idea. The inference is standard Model-Predictive Control, but now possible in &lt; 1 second because the latent state is tiny.</p>
+
+        <h3>2.1 · The architecture, in a diagram</h3>
+        <figure class="diagram"><svg viewBox="0 0 760 574" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahlwm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aalwm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs><rect x="230" y="12" width="300" height="52" rx="8" class="d-box"/><text x="380.0" y="35.0" text-anchor="middle" class="d-title">Input · raw pixels</text><text x="380.0" y="53.0" text-anchor="middle" class="d-sub">o_1 .. o_T</text><line x1="380" y1="64" x2="380" y2="104" class="d-edge" marker-end="url(#ahlwm)"/><rect x="215" y="104" width="330" height="64" rx="8" class="d-box"/><text x="380.0" y="133.0" text-anchor="middle" class="d-title">Encoder · enc_θ</text><text x="380.0" y="151.0" text-anchor="middle" class="d-sub">ViT-tiny ~5M · patch 14 · 12 layers</text><line x1="380" y1="168" x2="380" y2="208" class="d-edge" marker-end="url(#ahlwm)"/><rect x="240" y="208" width="280" height="56" rx="8" class="d-box"/><text x="380.0" y="233.0" text-anchor="middle" class="d-title">Latents</text><text x="380.0" y="251.0" text-anchor="middle" class="d-sub">z_1 .. z_T  ·  192-dim</text><line x1="380" y1="264" x2="380" y2="304" class="d-edge" marker-end="url(#ahlwm)"/><rect x="240" y="304" width="280" height="64" rx="8" class="d-box"/><text x="380.0" y="333.0" text-anchor="middle" class="d-title">Predictor · pred_φ</text><text x="380.0" y="351.0" text-anchor="middle" class="d-sub">rolls latents forward</text><rect x="575" y="310" width="160" height="52" rx="8" class="d-box-2"/><text x="655.0" y="333.0" text-anchor="middle" class="d-title">Actions</text><text x="655.0" y="351.0" text-anchor="middle" class="d-sub">a_1 .. a_T</text><line x1="575" y1="336" x2="521" y2="336" class="d-edge" marker-end="url(#ahlwm)"/><text x="548" y="328" text-anchor="middle" class="d-elabel">a_t</text><rect x="80" y="406" width="240" height="60" rx="8" class="d-box-accent"/><text x="200.0" y="433.0" text-anchor="middle" class="d-title">Prediction loss</text><text x="200.0" y="451.0" text-anchor="middle" class="d-sub">|| z_(t+1) - ẑ_t ||²</text><rect x="440" y="406" width="240" height="60" rx="8" class="d-box-accent"/><text x="560.0" y="433.0" text-anchor="middle" class="d-title">SIGReg</text><text x="560.0" y="451.0" text-anchor="middle" class="d-sub">anti-collapse · Gaussianity</text><polyline points="380,368 380,387.0 200,387.0 200,406" fill="none" class="d-edge-accent" marker-end="url(#aalwm)"/><polyline points="520,236 560,236 560,405" fill="none" class="d-edge-accent"/><polyline points="556,397 560,405 564,397" fill="none" class="d-edge-accent"/><rect x="250" y="506" width="260" height="56" rx="8" class="d-box"/><text x="380.0" y="531.0" text-anchor="middle" class="d-title">Total objective</text><text x="380.0" y="549.0" text-anchor="middle" class="d-sub">pred_loss + λ · sigreg_loss</text><polyline points="200,466 200,486" fill="none" class="d-edge"/><polyline points="560,466 560,486" fill="none" class="d-edge"/><line x1="200" y1="486" x2="560" y2="486" class="d-edge"/><line x1="380" y1="486" x2="380" y2="506" class="d-edge" marker-end="url(#ahlwm)"/></svg><figcaption><b>LeWorldModel — end-to-end from pixels.</b> A ViT-tiny encoder maps frames to 192-dim latents; the predictor rolls them forward conditioned on actions. Training uses just two terms: next-embedding prediction loss and a step-wise SIGReg anti-collapse penalty.</figcaption></figure>
+        <h4>Encoder · ViT-tiny + a BatchNorm projector</h4>
+        <p>Standard Vision Transformer, tiny configuration: ~5M parameters, patch size 14, 12 layers, 3 attention heads, hidden dim 192. The frame embedding is the [CLS] token from the last layer, passed through a one-layer MLP with BatchNorm. The BatchNorm matters: the final ViT layer applies LayerNorm, and LayerNorm prevents the anti-collapse objective from being optimised effectively. Subtle, important — and the kind of detail you only catch by trying it.</p>
+        <h4>Predictor · transformer with action-conditioning via AdaLN</h4>
+        <p>A 6-layer, 16-head transformer with 10% dropout, ~10M parameters. It autoregressively predicts ẑ_{t+1} from the past N embeddings, with a causal temporal mask so it can't peek at future frames. Actions enter through Adaptive LayerNorm (AdaLN) at every layer — the same trick from diffusion transformers. The AdaLN parameters are initialised to zero so that early in training the action conditioning is essentially off and the model can warm up on dynamics alone before learning to respond to control inputs.</p>
+
+        <h3>2.2 · The two-term loss</h3>
+        <h4>Term 1 · Next-embedding prediction (teacher-forced)</h4>
+        <div class="formula">ℒpred  ≜  ‖ ẑt+1 − zt+1 ‖22 ,    ẑt+1 = predφ(zt, at)</div>
+        <p>Mean-squared error between what the predictor said the next embedding would be and what the encoder actually produced for the next real frame. That's it — that's the prediction objective. On its own this will collapse: nothing stops the encoder from emitting a single constant vector for every input and the predictor from learning the identity.</p>
+        <h4>Term 2 · SIGReg · Sketched Isotropic Gaussian Regulariser</h4>
+        <div class="formula">SIGReg(Z)  ≜  (1 / M)  Σm=1..M   T( Z · u(m) )</div>
+        <p>SIGReg, borrowed from the LeJEPA paper (Balestriero &amp; LeCun, 2025), is the load-bearing trick that makes the whole thing work without heuristics. The reasoning is short and elegant:</p>
+        <p>You want the joint distribution of the latent embeddings Z ∈ ℝN×B×d to look like an isotropic Gaussian 𝒩(0, I) — which by construction can never collapse to a point.</p>
+        <p>Testing normality directly in d dimensions is hard. Univariate normality tests, on the other hand, are well-studied.</p>
+        <p>The Cramér–Wold theorem says: a multivariate distribution is uniquely determined by all its one-dimensional projections. So if every linear projection of your data looks Gaussian, the data is Gaussian.</p>
+        <p>You can't test every projection, so you sketch the space: draw M random unit-norm directions u(m) ∈ 𝕊d−1, project the embeddings, and run the univariate Epps–Pulley normality test T(·) on each 1-D projection. Average the test statistics. Minimise that.</p>
+        <p>Default: M = 1024 projections, λ = 0.1. The number of projections has negligible effect on downstream performance — so in practice λ is the only knob.</p>
+        <h4>The total objective</h4>
+        <div class="formula">ℒLeWM  ≜  ℒpred  +  λ · SIGReg(Z)</div>
+
+        <h3>2.3 · The whole training loop in 8 lines of Python</h3>
+        <p>From Algorithm 5 of the paper. Read it slowly — there's no second page.</p>
+        <pre><code>def LeWorldModel(obs, actions, lambd=0.1):
+    """
+    obs:     (B, T, C, H, W)  raw pixel sequence
+    actions: (B, T, A)        action sequence
+    lambd:   (float)          SIGReg loss weight  ·  default 0.1
+    """
+    emb       = encoder(obs)                       # (B, T, D)
+    next_emb  = predictor(emb, actions)            # (B, T, D)
+
+    # Term 1 — next-embedding prediction
+    pred_loss   = F.mse_loss(emb[:, 1:] - next_emb[:, :-1])
+
+    # Term 2 — step-wise SIGReg (anti-collapse, Gaussianity)
+    sigreg_loss = mean(SIGReg(emb.transpose(0, 1)))
+
+    return pred_loss + lambd * sigreg_loss</code></pre>
+        <p>Notice what is not here. No EMA target encoder. No <code>.detach()</code> / stop-gradient. No reward signal. No reconstruction decoder in the training graph. No frozen DINOv2. No proprioceptive state. The encoder and the predictor are trained jointly, end-to-end, by gradient descent on a two-term loss. That is the entire claim — and the entire delta — of the paper.</p>
+
+        <h3>2.4 · Inference · planning in latent space</h3>
+        <p>Once trained, the world model is used online for control via Model-Predictive Control (MPC). The classical recipe, but now ridiculously cheap because everything happens in 192-dim latent space.</p>
+        <figure class="diagram"><svg viewBox="0 0 760 534" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahlwmplan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aalwmplan" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs><rect x="160.0" y="12" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="39.0" text-anchor="middle" class="d-title">Encode endpoints</text><text x="380.0" y="57.0" text-anchor="middle" class="d-sub">z_1 = enc_θ(o_1)   ·   z_g = enc_θ(o_g)</text><rect x="160.0" y="102" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="129.0" text-anchor="middle" class="d-title">CEM — sample actions</text><text x="380.0" y="147.0" text-anchor="middle" class="d-sub">a_1:H ~ N(μ, σ²)</text><rect x="160.0" y="192" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="219.0" text-anchor="middle" class="d-title">Rollout latents</text><text x="380.0" y="237.0" text-anchor="middle" class="d-sub">ẑ_{t+1} = pred_φ(ẑ_t, a_t)</text><rect x="160.0" y="282" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="309.0" text-anchor="middle" class="d-title">Goal cost</text><text x="380.0" y="327.0" text-anchor="middle" class="d-sub">C = || ẑ_H - z_g ||²</text><rect x="160.0" y="372" width="440" height="60" rx="8" class="d-box-2"/><text x="380.0" y="399.0" text-anchor="middle" class="d-title">Keep K best → refit μ, σ²</text><text x="380.0" y="417.0" text-anchor="middle" class="d-sub">repeat until converged</text><text x="612.0" y="406.0" text-anchor="start" class="d-eyebrow">inner: CEM</text><rect x="160.0" y="462" width="440" height="60" rx="8" class="d-box-accent"/><text x="380.0" y="489.0" text-anchor="middle" class="d-title">Execute first action → replan</text><text x="380.0" y="507.0" text-anchor="middle" class="d-sub">receding horizon</text><text x="612.0" y="496.0" text-anchor="start" class="d-eyebrow">outer: MPC</text><line x1="380.0" y1="72" x2="380.0" y2="101" class="d-edge" marker-end="url(#ahlwmplan)"/><line x1="380.0" y1="162" x2="380.0" y2="191" class="d-edge" marker-end="url(#ahlwmplan)"/><line x1="380.0" y1="252" x2="380.0" y2="281" class="d-edge" marker-end="url(#ahlwmplan)"/><line x1="380.0" y1="342" x2="380.0" y2="371" class="d-edge" marker-end="url(#ahlwmplan)"/><line x1="380.0" y1="432" x2="380.0" y2="461" class="d-edge" marker-end="url(#ahlwmplan)"/></svg><figcaption><b>Planning is gradient-free MPC.</b> CEM proposes action sequences, the predictor rolls latents forward, and distance to the goal latent ranks them. Best actions refit the sampling distribution (inner loop); the first action is executed before the agent replans (outer loop).</figcaption></figure>
+        <h4>Two design choices that matter:</h4>
+        <p>Why CEM, not gradient descent on actions? CEM is sampling-based and doesn't need a differentiable cost surface in action space. It tolerates discontinuities and local minima better than gradient methods, which is important when the world model's prediction surface is itself irregular.</p>
+        <p>Why MPC, not full-horizon execution? Auto-regressive latent rollouts accumulate prediction error as the horizon grows. Executing only the first K planned actions before re-encoding the real observation and replanning bounds the error.</p>
+        <p>The reason this whole thing is fast is that the encoder produces a single [CLS]-token embedding per frame — roughly 200× fewer tokens than DINO-WM, which patches each observation into hundreds of tokens. Every CEM iteration rolls many candidate trajectories forward, so cutting the per-step cost by 200× compounds into the headline 48× speedup at the planning level.</p>
+
+        <div class="sec-eyebrow"><span class="sec-num">03</span> Why</div>
+        <h2>Why does it matter?</h2>
+        <p>Three reasons the paper is worth your time even if you'll never train one: it removes a tax, it lowers a barrier, and it produces a side-effect that hints at something deeper.</p>
+
+        <h3>3.1 · It removes the JEPA stability tax</h3>
+        <div class="callout accent">
+          <h4>The core technical claim</h4>
+          <p>For three years, every advance in JEPA-style training has been one more heuristic added to fight collapse — EMA, stop-grad, multi-term losses, frozen encoders, auxiliary signals. Each one trades stability for theoretical opacity and operational complexity. SIGReg replaces the entire pile with a single, provable, gradient-friendly objective. The training loss curves on Push-T show it: LeWM's two terms decrease smoothly and monotonically; PLDM's seven terms oscillate against each other. You can trust the loss.</p>
+        </div>
+        <h4>Hyperparameter search becomes logarithmic</h4>
+        <p>Because there is effectively one knob (λ), and the dependence on it is monotonic over a wide range, you can find a good λ by simple bisection search — log-time. PLDM, with seven weighted loss terms, needs polynomial search 𝒪(n⁶) over the loss-weight simplex. For a small academic lab or a hobbyist trying to reproduce, that gap is the difference between "I ran it on my laptop" and "I never got it working."</p>
+
+        <h3>3.2 · The performance / cost picture</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Environment</th><th>LeWM (pixels)</th><th>PLDM (pixels)</th><th>DINO-WM (frozen DINOv2)</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Push-T (2D manipulation)</td><td>best · +18% vs PLDM</td><td>beats DINO-WM</td><td>beaten by LeWM even with proprio added</td><td>The headline result. LeWM captures task-relevant quantities purely from pixels.</td></tr>
+              <tr><td>Reacher (2-joint arm)</td><td>best</td><td>—</td><td>—</td><td>Beats both baselines.</td></tr>
+              <tr><td>OGBench-Cube (3D manipulation)</td><td>competitive · close 2nd</td><td>—</td><td>slightly ahead</td><td>3D + visual complexity is harder for an end-to-end encoder vs a foundation model.</td></tr>
+              <tr><td>Two-Room (2D navigation, simple)</td><td>weakest</td><td>better</td><td>better</td><td>Low intrinsic-dimensionality data makes a high-dim isotropic-Gaussian prior over-regularise. A real limitation.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="stat-grid">
+          <div class="stat"><span class="num">~200×</span><span class="label">Fewer tokens than DINO-WM per observation</span></div>
+          <div class="stat"><span class="num">48×</span><span class="label">Faster CEM planning loop vs DINO-WM</span></div>
+          <div class="stat"><span class="num">&lt; 1 s</span><span class="label">End-to-end planning step (fixed setup, all environments)</span></div>
+          <div class="stat"><span class="num">1 GPU</span><span class="label">Few hours total training across all benchmarks</span></div>
+        </div>
+        <p>The speed story is structural, not benchmark-specific. DINO-WM encodes each observation as hundreds of patch tokens because it inherits DINOv2's architecture. LeWM encodes each observation as a single [CLS]-token vector. CEM rolls forward thousands of candidate trajectories per planning step; multiply that by 200× per-step cost and you get the order-of-magnitude headline. The under-one-second planning is in the neighbourhood of practical real-time control — not there yet, but visibly close.</p>
+
+        <h3>3.3 · The latent space turns out to know physics</h3>
+        <p>This is the section that quietly suggests LeWM is more than a control trick. The authors do three things to the trained latent space, expecting nothing in particular, and find structure they didn't optimise for:</p>
+        <h4>Probing physical quantities</h4>
+        <p>Train a linear (and a nonlinear) probe to predict things like position, velocity, and orientation directly from the latent vector. LeWM consistently beats PLDM and is competitive with DINOv2 — despite DINOv2 having seen 124M images of pretraining. The latent encodes the physical state of the scene even though nobody told it to.</p>
+        <h4>Decoded rollouts</h4>
+        <p>Train an external decoder (not part of training!) to reconstruct pixels from the 192-dim latent. The decoded images look like the real scene. The compact embedding retains enough information about the underlying state to be inverted — without any reconstruction signal during training.</p>
+        <h4>Temporal straightening</h4>
+        <p>A neuroscience-inspired test: do consecutive latent-velocity vectors become more parallel over training? LeWM's latent trajectories straighten as training progresses, emergently, without any temporal smoothness term. PLDM has an explicit smoothness regulariser and still ends up less straight.</p>
+        <h4>Violation-of-expectation · the model is "surprised" by un-physical events</h4>
+        <p>Borrowing a paradigm from developmental psychology, the authors compare three trajectories per environment: an unperturbed reference, a visually perturbed one (object changes colour), and a physically perturbed one (object teleports to a random position). Surprise — measured as the mismatch between predicted and actual next embedding — spikes sharply on teleportation, with paired t-tests giving p &lt; 0.01 across TwoRoom, PushT, and OGBench-Cube. Colour-change spikes are weaker and not significant. The model treats physical continuity as a stronger prior than visual identity. That is exactly what you'd want from a learned intuitive-physics system, and it falls out of the same two-term loss.</p>
+        <div class="chip-row">
+          <span class="chip">TwoRoom · p &lt; 0.01</span>
+          <span class="chip">PushT · p &lt; 0.01</span>
+          <span class="chip">OGBench-Cube · p &lt; 0.01</span>
+          <span class="chip">Colour-change · not significant</span>
+        </div>
+
+        <h3>3.4 · Strengths and honest limits</h3>
+        <h4>What it nails</h4>
+        <ul>
+          <li>End-to-end from pixels, no foundation-model crutch — fully expressive encoder for the task.</li>
+          <li>Two-term loss with provable anti-collapse guarantees from the Cramér–Wold + Epps–Pulley pairing.</li>
+          <li>One effective hyperparameter, log-time search. Reproducibility goes way up.</li>
+          <li>Single-GPU training. Few-hours wall-clock. Compact 15M-parameter model.</li>
+          <li>48× faster planning than DINO-WM — closes most of the gap to real-time control.</li>
+          <li>Latent space encodes meaningful physical structure as an emergent property, not an objective.</li>
+          <li>Architecture-agnostic: also works with ResNet-18 backbone in ablations.</li>
+        </ul>
+        <h4>Where it bends</h4>
+        <ul>
+          <li>Short-horizon planning only. Auto-regressive latent rollouts accumulate error; long-horizon planning needs hierarchical world models — explicit future work.</li>
+          <li>Offline-dataset dependency. You still need trajectories with sufficient coverage of the environment dynamics.</li>
+          <li>Low-complexity environments hurt it. Two-Room is too simple — pushing a high-dim latent toward an isotropic Gaussian over-regularises when the intrinsic dimensionality of the data is small. A real failure mode the authors flag honestly.</li>
+          <li>Action labels required. Inverse-dynamics learning could relax this — also flagged as future work.</li>
+          <li>3D / visually complex tasks still favour foundation-model baselines. DINO-WM beats LeWM on OGBench-Cube, possibly because 124M pretraining images give DINOv2 a 3D-shape prior that LeWM has to learn from scratch.</li>
+          <li>Not yet tested on real-world video / robotics. Everything in the paper is simulated control tasks.</li>
+        </ul>
+
+        <h3>3.5 · Why I think this matters beyond the benchmark numbers</h3>
+        <p>Three reads, increasing in ambition:</p>
+        <p><strong>Engineering read.</strong> If you wanted to build a JEPA-based world model in 2025 you had to choose: foundation-encoder (expressive ceiling capped), or end-to-end with seven loss terms (brittle to tune). LeWM is a third option that wasn't there before. It is now the obvious starting point for anyone training a small, fast latent world model.</p>
+        <p><strong>Methodological read.</strong> SIGReg shows that a principled normality regulariser — Cramér–Wold projection + Epps–Pulley test — can replace a stack of architectural and optimisation heuristics that the field has accumulated for years. The same recipe is likely to clean up other self-supervised settings (the LeJEPA paper already argues this for representation learning). Expect to see SIGReg-style regularisers show up in many more papers.</p>
+        <p><strong>"World models for AGI" read.</strong> LeCun's bet is that the path to general intelligence runs through latent world models that predict, plan, and reason in compact embedding spaces — and that those should be learned by self-supervision from sensory streams. LeWM is a small but very clean instance of that program: pixel-in, world-model-out, no rewards, no labels, with emergent physical structure and surprise detection in the latent. It doesn't settle the debate, but it makes the agenda look more practical and less aspirational than it did before.</p>
+        <p>The thing I'd want to see next: scale it up. ~15M parameters and a handful of toy control environments are exactly the regime where SIGReg looks magical. The interesting question is whether the same two-term recipe trains stably at 1B parameters on natural video. If yes, this is a foundational contribution. If no, it's still a beautiful, useful small-model recipe.</p>
+      </div>
+
+      <nav class="post-nav">
+        <a href="../blog.html">← All writing</a>
+        <a href="./openhuman.html">OpenHuman →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

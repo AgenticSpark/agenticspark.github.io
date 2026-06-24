@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TensorRT · GPU inference compiler — Ethan</title>
+  <meta name="description" content="NVIDIA's GPU inference compiler and runtime: build-time graph optimization, tactic selection, precision lowering, serialized engines, and the closed-core tradeoff behind TensorRT." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/tensorrt.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="TensorRT · GPU inference compiler" />
+  <meta property="og:description" content="A STAR analysis of TensorRT: the NVIDIA inference SDK that compiles trained models into GPU-specific engines, and the constraints that come with it." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/tensorrt.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="TensorRT · GPU inference compiler" />
+  <meta name="twitter:description" content="Build-time graph optimization, tactics, precision lowering, serialized engines, and the closed-core tradeoff behind TensorRT." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">GPU inference compilers · STAR analysis</span>
+        <h1 class="post-title">TensorRT</h1>
+        <p class="post-dek">NVIDIA's inference SDK is less a server and more a compiler: it takes a trained network, searches the GPU-specific implementation space, and emits a serialized engine that is built for one deployment shape. The magic is not an always-on runtime scheduler; it is <em>build-time specialization</em> — fusion, precision lowering, kernel tactic timing, and memory planning before the first request arrives. That distinction is what makes TensorRT fast for stable models and awkward for volatile ones. The honest footnote matters too: the GitHub repository is Apache-2.0 TensorRT-OSS, while the core optimizer and runtime libraries remain closed-source NVIDIA binaries under NVIDIA's license.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Repo</dt><dd><a href="https://github.com/NVIDIA/TensorRT" target="_blank" rel="noopener">NVIDIA/<wbr>TensorRT</a></dd></div>
+        <div><dt>License</dt><dd>Apache-2.0 (OSS components)</dd></div>
+        <div><dt>Stack</dt><dd>C++ · CUDA · Python</dd></div>
+        <div><dt>Version</dt><dd>11.1.0 docs · OSS tag v11.0</dd></div>
+        <div><dt>Stars</dt><dd>~13.1K · 2.4K forks</dd></div>
+        <div><dt>Reviewed</dt><dd>Jun 2026</dd></div>
+      </dl>
+
+      <div class="prose">
+        <h2>In short</h2>
+        <p>A GPU-specific compiler/runtime path for turning stable trained models into low-overhead NVIDIA inference artifacts.</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>What it is</h4>
+            <p>TensorRT is NVIDIA's high-performance deep-learning inference SDK for NVIDIA GPUs. The common path is export a framework model to ONNX, parse it into TensorRT's <code>INetworkDefinition</code>, let the builder optimize it, then run the serialized engine through the TensorRT runtime API, Triton, or a higher-level integration. It is the thing you reach for when milliseconds, memory, and GPU occupancy matter more than framework convenience.</p>
+          </div>
+          <div class="callout">
+            <h4>Why it's interesting</h4>
+            <p>It attacks inference overhead before production traffic exists. The builder fuses layers, selects precision formats, times candidate kernels on the target GPU, plans weights and activation memory, and packages the result into an engine file. That build artifact can be much leaner than a dynamic framework graph because the runtime is mostly executing decisions already made.</p>
+          </div>
+          <div class="callout">
+            <h4>Biggest concerns</h4>
+            <p>The fastest part is the least inspectable. TensorRT-OSS exposes plugins, the ONNX parser, samples, and tools under Apache-2.0, but the core optimizer and runtime are closed. Engines are also non-portable by default: target GPU architecture, TensorRT version, platform, plugins, precision choices, and shape profiles all become part of the artifact contract.</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">11.1</span><span class="label">Latest docs release line</span></div>
+          <div class="stat"><span class="num">~13.1K</span><span class="label">Stars · ~2.4K forks</span></div>
+          <div class="stat"><span class="num">OSS ≠ core</span><span class="label">Apache repo, closed libraries</span></div>
+          <div class="stat"><span class="num">ONNX</span><span class="label">Primary import route</span></div>
+          <div class="stat"><span class="num">.plan</span><span class="label">Serialized engine artifact</span></div>
+        </div>
+
+        <div class="callout accent">
+          <h4>Verdict</h4>
+          <p>Reach for TensorRT when the model is stable, the target hardware is known, and shaving latency or memory on NVIDIA GPUs is worth a build pipeline. Prefer vLLM or SGLang when the workload is open-ended LLM serving with fast model churn, OpenAI-compatible APIs, and dynamic batching needs; prefer plain PyTorch while you are still changing graphs every day. TensorRT is strongest as the final compilation step, not as the fastest way to iterate.</p>
+        </div>
+
+        <h2>First — compile, then run</h2>
+        <p>TensorRT's whole personality is "pay at build time so runtime is cheap," and the fastest way to feel that is <code>trtexec</code>, the CLI that ships with it. Point it at an ONNX file and it builds a hardware-specific engine:</p>
+        <pre><code>$ trtexec --onnx=resnet50.onnx --saveEngine=resnet50.plan --fp16
+[I] Engine built in 41.7 s          # the expensive part, paid once
+[I] Throughput: 6128 qps
+[I] Latency: mean 1.41 ms  min 1.33 ms  max 2.02 ms</code></pre>
+        <p>That 42-second build is the whole trade in one number: TensorRT just fused layers, picked FP16 Tensor-Core kernels, timed dozens of candidate tactics on <em>this</em> GPU, and froze the winners into <code>resnet50.plan</code>. Running the saved engine never repeats that work — it deserializes and executes:</p>
+        <pre><code>$ trtexec --loadEngine=resnet50.plan --shapes=input:32x3x224x224
+[I] Throughput: 6203 qps   Latency: mean 1.39 ms      # no builder in sight</code></pre>
+        <p>The same flow from Python builds the engine programmatically — useful when the network comes from code rather than ONNX, or when you script calibration:</p>
+        <pre><code>import tensorrt as trt
+
+logger  = trt.Logger(trt.Logger.WARNING)
+builder = trt.Builder(logger)
+network = builder.create_network(1 &lt;&lt; int(trt.NetworkDefinitionCreationFlag.STRONGLY_TYPED))
+parser  = trt.OnnxParser(network, logger)
+parser.parse(open("resnet50.onnx", "rb").read())
+
+config = builder.create_builder_config()
+config.set_flag(trt.BuilderFlag.FP16)
+engine = builder.build_serialized_network(network, config)
+open("resnet50.plan", "wb").write(engine)        # ship this artifact, not the ONNX</code></pre>
+        <p>Keep that <code>.plan</code> in mind: it is a compiled binary for one GPU architecture, not a portable model file. Everything below is what the builder packed into it.</p>
+
+        <h2>1 · Situation — generic runtimes leave performance on the table</h2>
+        <p>A trained model is not automatically a good production program. PyTorch, TensorFlow, and ONNX graphs preserve enough dynamism to be pleasant for research and portable exchange, but that generality becomes overhead during inference: many small kernels, intermediate tensors materialized to DRAM, CPU launch gaps, conservative precision, and operators chosen without full knowledge of the deployment GPU.</p>
+        <p>That waste is tolerable when the bottleneck is experimentation. It is expensive when an application serves millions of images, recommendations, embeddings, speech frames, diffusion denoising steps, or fixed-shape transformer encoder calls. At that point the problem is no longer "can the model run?" The problem is whether the GPU is executing the best available kernels, at the right precision, with the fewest possible memory round trips.</p>
+        <p>TensorRT's answer is to move work from runtime to build time. Instead of interpreting a framework graph for every deployment, it compiles a specialized engine for the target constraints. The cost is paid up front in build time, profiling, calibration, and artifact management; the benefit is a smaller, faster execution path once traffic starts.</p>
+
+        <h2>2 · Task — compile a trained network into a target-specific engine</h2>
+        <p>The task is narrow and systems-shaped: given a trained network and a known NVIDIA deployment target, produce an engine that runs inference with lower latency, higher throughput, and controlled memory use.</p>
+        <p>That implies a few non-negotiables. TensorRT has to understand the graph, either by parsing ONNX or by constructing it directly through the C++/Python network definition API. It has to know which shapes are legal; dynamic shapes require optimization profiles that bound the ranges the builder will optimize for. It has to choose precisions that respect accuracy. And it has to pick kernels not in the abstract, but on the target GPU where cache sizes, Tensor Cores, memory bandwidth, and plugin availability are real constraints.</p>
+        <ol>
+          <li><strong>Compile the graph</strong> — fuse, fold, lower, and schedule supported operators.</li>
+          <li><strong>Search implementations</strong> — time candidate kernels, called tactics, under the target constraints.</li>
+          <li><strong>Package the result</strong> — serialize an engine for runtime deserialization and execution.</li>
+        </ol>
+
+        <h2>3 · Action — what TensorRT actually does</h2>
+        <p>Six lenses: builder objects, fusion, precision, tactics, import boundaries, and the LLM-specific layer that sits next to the core SDK.</p>
+
+        <h3>3.1 The builder and engines — compilation before execution</h3>
+        <p>The canonical flow is builder → network definition → builder config → optimized engine → runtime execution context. In C++, the names show the architecture: <code>IBuilder</code> creates an <code>INetworkDefinition</code> and <code>IBuilderConfig</code>; an ONNX parser or user code fills the network; the builder creates a serialized engine; <code>IRuntime</code> deserializes that engine; <code>IExecutionContext</code> enqueues work on CUDA streams.</p>
+        <p>The important separation is that the builder can disappear after the engine is created. The runtime does not need the original ONNX file or the training framework. It needs the engine, the matching TensorRT runtime libraries, any required plugins, input/output buffers, and the CUDA context. That is why TensorRT feels more like shipping a compiled binary than importing a Python model.</p>
+        <figure class="diagram"><svg viewBox="0 0 760 430" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahtrt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aatrt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="40" y="46" width="155" height="66" rx="8" class="d-box"/><text x="117" y="72" text-anchor="middle" class="d-title">ONNX / network</text><text x="117" y="94" text-anchor="middle" class="d-sub">parser or API</text>
+        <line x1="195" y1="79" x2="246" y2="79" class="d-edge" marker-end="url(#ahtrt)"/>
+        <rect x="248" y="34" width="260" height="90" rx="8" class="d-box-accent"/><text x="378" y="62" text-anchor="middle" class="d-title">Builder optimizations</text><text x="378" y="84" text-anchor="middle" class="d-sub">fusion · precision · tactics</text><text x="378" y="104" text-anchor="middle" class="d-sub">shape profiles · memory plans</text>
+        <line x1="508" y1="79" x2="560" y2="79" class="d-edge-accent" marker-end="url(#aatrt)"/>
+        <rect x="562" y="46" width="158" height="66" rx="8" class="d-box"/><text x="641" y="72" text-anchor="middle" class="d-title">Serialized engine</text><text x="641" y="94" text-anchor="middle" class="d-sub">.plan / .engine</text>
+        <line x1="641" y1="112" x2="641" y2="164" class="d-edge" marker-end="url(#ahtrt)"/>
+        <rect x="542" y="166" width="198" height="74" rx="8" class="d-box"/><text x="641" y="194" text-anchor="middle" class="d-title">Runtime</text><text x="641" y="216" text-anchor="middle" class="d-sub">deserialize engine</text>
+        <line x1="542" y1="203" x2="462" y2="203" class="d-edge" marker-end="url(#ahtrt)"/>
+        <rect x="256" y="166" width="206" height="74" rx="8" class="d-box"/><text x="359" y="194" text-anchor="middle" class="d-title">Execution context</text><text x="359" y="216" text-anchor="middle" class="d-sub">bindings · stream · enqueue</text>
+        <line x1="359" y1="240" x2="359" y2="292" class="d-edge-accent" marker-end="url(#aatrt)"/>
+        <rect x="236" y="294" width="246" height="74" rx="8" class="d-box-accent"/><text x="359" y="322" text-anchor="middle" class="d-title">CUDA execution</text><text x="359" y="344" text-anchor="middle" class="d-sub">target GPU kernels</text>
+        <path d="M117 112 C117 318 195 332 233 332" fill="none" class="d-edge" stroke-dasharray="5 4" marker-end="url(#ahtrt)"/><text x="115" y="230" text-anchor="middle" class="d-elabel" transform="rotate(-90 115 230)">build artifact boundary</text>
+        </svg><figcaption><b>TensorRT's central trade.</b> Spend time in the builder so runtime execution is mostly deserializing a specialized engine and enqueueing GPU work through one or more execution contexts.</figcaption></figure>
+        <p>There is a security implication hiding here. NVIDIA's docs warn that deserializing an engine from an untrusted source is equivalent to executing untrusted native code; an engine can contain compiled CUDA tactics, plugin references, and state instantiated inside the process. Treat <code>.plan</code> files like binaries, not neutral model files.</p>
+
+        <h3>3.2 Layer and tensor fusion — fewer launches, fewer DRAM trips</h3>
+        <p>Layer fusion is the easiest TensorRT optimization to understand and one of the hardest to reproduce manually at scale. If the builder recognizes a supported pattern — convolution plus bias plus activation, chains of elementwise operations, pointwise subgraphs, Q/DQ quantization patterns — it can collapse several graph nodes into one kernel or one optimized layer implementation.</p>
+        <p>The win is mechanical. Every absorbed layer removes a CPU kernel launch, often a 5–15 microsecond tax. Every removed intermediate tensor avoids a write to DRAM and a later read back. For small layers, launch overhead can dominate; for memory-bound layers, the intermediate traffic dominates. Fusion makes both smaller. The caveat is that fusion is pattern-dependent and opaque enough that you verify it by reading build logs, dumping layer info with <code>trtexec</code>, or profiling with Nsight tools.</p>
+        <figure class="diagram"><svg viewBox="0 0 760 320" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahtrt2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aatrt2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <text x="155" y="34" text-anchor="middle" class="d-sub">before: 3 kernels, 2 DRAM round-trips</text>
+        <rect x="90" y="56" width="130" height="44" rx="6" class="d-box"/><text x="155" y="83" text-anchor="middle" class="d-title">Conv</text>
+        <rect x="90" y="138" width="130" height="44" rx="6" class="d-box"/><text x="155" y="165" text-anchor="middle" class="d-title">Bias add</text>
+        <rect x="90" y="220" width="130" height="44" rx="6" class="d-box"/><text x="155" y="247" text-anchor="middle" class="d-title">ReLU</text>
+        <line x1="155" y1="100" x2="155" y2="136" class="d-edge" marker-end="url(#ahtrt2)"/><text x="234" y="123" class="d-elabel">write/read DRAM</text>
+        <line x1="155" y1="182" x2="155" y2="218" class="d-edge" marker-end="url(#ahtrt2)"/><text x="234" y="205" class="d-elabel">write/read DRAM</text>
+        <line x1="240" y1="160" x2="498" y2="160" class="d-edge-accent" marker-end="url(#aatrt2)"/><text x="370" y="150" text-anchor="middle" class="d-elabel">fuse</text>
+        <text x="610" y="34" text-anchor="middle" class="d-sub">after: 1 fused kernel</text>
+        <rect x="510" y="118" width="200" height="84" rx="8" class="d-box-accent"/><text x="610" y="152" text-anchor="middle" class="d-title">Conv + Bias + ReLU</text><text x="610" y="174" text-anchor="middle" class="d-sub">one launch, no intermediates</text>
+        </svg><figcaption><b>Vertical fusion.</b> A Conv-Bias-Activation chain becomes a single kernel: two intermediate tensors never touch DRAM and two kernel launches (5–15 µs each) disappear. For launch-bound small layers and bandwidth-bound elementwise chains alike, fusion is most of where TensorRT's speed comes from.</figcaption></figure>
+        <p>You can see the result in the engine's own layer list. Where the ONNX graph had three nodes, the built engine reports one:</p>
+        <pre><code>$ trtexec --onnx=block.onnx --dumpLayerInfo --exportLayerInfo=layers.json
+# ONNX:   Conv -&gt; BiasAdd -&gt; Relu       (3 nodes, 2 intermediate tensors)
+# Engine: {"Name": "Conv_0 + BiasAdd_1 + Relu_2", "LayerType": "CaskConvolution"}</code></pre>
+
+        <h3>3.3 Precision and INT8/FP8 calibration — speed is a numerical bargain</h3>
+        <p>TensorRT supports FP32 and reduced-precision paths such as TF32, FP16, BF16, INT8, FP8, and newer low-precision modes on hardware that exposes them. The performance reason is obvious: Tensor Cores are built for dense low-precision matrix and convolution work, and smaller datatypes reduce memory bandwidth pressure. The accuracy reason is less friendly: fewer bits means overflow, rounding, scale choice, and sensitive operations can move outputs.</p>
+        <p>Modern TensorRT 11 documentation emphasizes strongly typed networks and explicit quantization; older implicit INT8 calibration APIs have been removed. The practical point survives across versions: INT8 is not a flag you flip blindly. You need representative calibration or quantized training/export, you need to evaluate accuracy on the task that matters, and you need a fallback plan for layers like softmax, reductions, or numerically sensitive post-processing that may want higher precision. FP8 gives a similar bargain on newer GPUs: often excellent throughput, but still a deployment-specific numerical decision.</p>
+        <pre><code># --best lets the builder pick the fastest tactic per layer across FP16 + INT8;
+# or constrain precision explicitly and supply cached calibration scales
+$ trtexec --onnx=model.onnx --best --saveEngine=model.plan
+$ trtexec --onnx=model.onnx --fp16 --int8 --calib=calib.cache</code></pre>
+        <figure class="diagram"><svg viewBox="0 0 760 300" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahtrt3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aatrt3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="24" y="44" width="184" height="56" rx="8" class="d-box"/><text x="116" y="68" text-anchor="middle" class="d-title">FP32 ONNX graph</text><text x="116" y="88" text-anchor="middle" class="d-sub">trained weights</text>
+        <rect x="24" y="150" width="184" height="56" rx="8" class="d-box"/><text x="116" y="174" text-anchor="middle" class="d-title">Calibration data</text><text x="116" y="194" text-anchor="middle" class="d-sub">~500 representative inputs</text>
+        <rect x="280" y="86" width="216" height="80" rx="8" class="d-box-accent"/><text x="388" y="116" text-anchor="middle" class="d-title">Builder calibrates</text><text x="388" y="138" text-anchor="middle" class="d-sub">ranges -&gt; per-tensor scales</text>
+        <rect x="560" y="60" width="176" height="56" rx="8" class="d-box"/><text x="648" y="84" text-anchor="middle" class="d-title">INT8 engine</text><text x="648" y="104" text-anchor="middle" class="d-sub">Tensor-Core GEMMs</text>
+        <rect x="560" y="150" width="176" height="66" rx="8" class="d-box-2"/><text x="648" y="176" text-anchor="middle" class="d-title">Sensitive layers</text><text x="648" y="196" text-anchor="middle" class="d-sub">softmax / norm kept FP16</text>
+        <line x1="208" y1="72" x2="278" y2="110" class="d-edge" marker-end="url(#ahtrt3)"/>
+        <line x1="208" y1="178" x2="278" y2="142" class="d-edge" marker-end="url(#ahtrt3)"/>
+        <line x1="496" y1="110" x2="558" y2="88" class="d-edge-accent" marker-end="url(#aatrt3)"/>
+        <line x1="496" y1="142" x2="558" y2="180" class="d-edge" stroke-dasharray="5 4" marker-end="url(#ahtrt3)"/>
+        </svg><figcaption><b>INT8 is a measurement, not a flag.</b> The builder runs representative data through the FP32 graph to learn each tensor's dynamic range, derives quantization scales, and emits an INT8 engine — while leaving numerically sensitive layers (softmax, normalization, some reductions) in higher precision. Skip the calibration step and accuracy, not speed, is what you lose.</figcaption></figure>
+
+        <h3>3.4 Kernel auto-tuning and tactics — the closed search space</h3>
+        <p>For each layer or fused region, TensorRT may have many possible implementations: cuDNN paths, cuBLASLt GEMMs, Tensor Core variants, custom kernels, plugin formats, different tilings, and different temporary-memory requirements. The builder times candidates on the target GPU and records the winning implementation as a <strong>tactic</strong>. Timing caches can speed repeated builds; builder optimization levels can trade build time for search breadth.</p>
+        <p>This is where TensorRT earns both its reputation and its frustration. Tactic selection is one reason engines can be extremely fast on a known GPU. It is also why debugging can feel indirect: if a kernel choice is slow, nondeterministic, memory-hungry, or numerically surprising, the most important decision was made inside NVIDIA's closed optimizer. You can constrain workspace, shapes, precision, and some builder knobs, but you cannot patch the core search algorithm from the GitHub repository.</p>
+
+        <h3>3.5 ONNX import and plugins — the boundary between portable and custom</h3>
+        <p>ONNX is TensorRT's primary interchange route. Export from PyTorch, TensorFlow, or another framework; simplify or fold constants where useful; parse the graph; then handle unsupported operators. The fast path is full operator coverage, because the ONNX conversion can produce a single TensorRT engine with little runtime overhead. The slow path is discovering that one op, shape expression, control-flow edge, or plugin dependency blocks conversion.</p>
+        <p>Plugins are the escape hatch. TensorRT-OSS includes open-source plugin implementations and the ONNX parser, and applications can register custom plugins through the plugin registry. That is powerful: custom CUDA can sit inside an engine and participate in serialization. It is also an operational contract: the plugin library must be present and registered at runtime, its formats must be efficient, and its behavior becomes part of engine portability.</p>
+
+        <h3>3.6 TensorRT-LLM for LLMs — adjacent, not the same layer</h3>
+        <p>For autoregressive LLM serving, plain TensorRT is not the whole story. NVIDIA's LLM-specific stack lives in the separate <a href="https://github.com/NVIDIA/TensorRT-LLM" target="_blank" rel="noopener">NVIDIA/TensorRT-LLM</a> repository. That project adds LLM serving mechanisms such as in-flight batching, paged KV cache management, specialized attention kernels, quantization paths including FP8 on supported GPUs, and Python/C++ runtimes that orchestrate generation rather than one fixed feed-forward call.</p>
+        <p>The distinction matters in inference-landscape comparisons. TensorRT is the lower-level compiler/runtime foundation for optimized NVIDIA engines. TensorRT-LLM is the LLM-serving system built around that kind of compilation plus request scheduling, KV-cache policy, decoding features, and model-specific kernels. If the workload is a fixed ResNet or BERT encoder, TensorRT is the subject. If the workload is a chat model under mixed-length concurrent traffic, TensorRT-LLM competes more directly with vLLM and SGLang.</p>
+        <pre><code># the LLM stack quantizes + compiles a checkpoint into an engine, then serves it
+$ trtllm-build --checkpoint_dir ./llama3-8b-fp8 \
+      --gemm_plugin auto --max_batch_size 64 --max_num_tokens 8192 \
+      --output_dir ./engines/llama3-8b
+$ trtllm-serve ./engines/llama3-8b --port 8000        # OpenAI-compatible endpoint</code></pre>
+        <p>Note the shape of it: a compile step (minutes) produces an engine pinned to a batch and sequence budget, then a server wraps it with in-flight batching and a paged KV cache. That is the same job vLLM and SGLang do without a separate ahead-of-time build — the recurring TensorRT trade, now applied to token generation.</p>
+
+        <h2>4 · Result — what the mechanisms buy you</h2>
+        <p>The output is not just "faster." It is a different artifact lifecycle with different failure modes.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Mechanism</th><th>What it buys you</th><th>Honest caveat</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Serialized engine</td><td>Low-overhead runtime path with graph decisions precompiled</td><td>Non-portable by default across platform, GPU architecture, and TensorRT version</td></tr>
+              <tr><td>Layer / tensor fusion</td><td>Fewer kernel launches and fewer intermediate DRAM reads/writes</td><td>Pattern coverage is finite; verify with logs and profiling</td></tr>
+              <tr><td>Precision lowering</td><td>Tensor Core throughput and lower memory bandwidth pressure</td><td>INT8/FP8 need representative data and accuracy validation</td></tr>
+              <tr><td>Tactic timing</td><td>Per-GPU kernel choices rather than generic implementations</td><td>Closed optimizer makes bad choices hard to inspect or patch</td></tr>
+              <tr><td>Dynamic shape profiles</td><td>One engine can cover bounded shape ranges</td><td>Profiles complicate builds; wrong ranges can hurt performance or fail</td></tr>
+              <tr><td>Plugins</td><td>Custom ops can live inside the optimized engine</td><td>Plugin binaries become runtime dependencies and portability constraints</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The strongest TensorRT deployments feel boring in production: fixed model, pinned driver/container, known GPU, measured shape profiles, archived build logs, reproducible calibration data, and engines rebuilt as part of release. The weakest deployments treat the engine as if it were a portable ONNX file and then discover the hidden contract after a GPU, CUDA, plugin, or TensorRT upgrade.</p>
+
+        <h2>5 · Takeaways — how to read TensorRT in 2026</h2>
+        <p>Five calibrated conclusions for an engineer choosing an inference stack.</p>
+        <h4>What's genuinely strong</h4>
+        <ul>
+          <li><strong>Build-time specialization is the point.</strong> TensorRT is best when it can spend minutes optimizing a model that will run millions of times.</li>
+          <li><strong>The NVIDIA path is deep.</strong> CUDA, Tensor Cores, cuDNN/cuBLASLt tactics, Triton deployment, Nsight profiling, and TensorRT engines are designed to fit together.</li>
+          <li><strong>ONNX keeps the front door practical.</strong> You do not need to hand-write every network if your exported graph uses supported operators and shapes.</li>
+          <li><strong>Plugins make the ceiling higher</strong> for teams willing to own CUDA code, serialization, and runtime registration.</li>
+        </ul>
+        <h4>What to budget for</h4>
+        <ul>
+          <li><strong>Closed-core limits.</strong> The GitHub repo is useful, but it is not the optimizer source. You cannot audit or patch the most important search logic.</li>
+          <li><strong>Artifact rebuilds.</strong> Engines are tied to target assumptions; plan to rebuild per GPU family, TensorRT line, plugin set, shape profile, and precision policy.</li>
+          <li><strong>Calibration and validation.</strong> INT8 or FP8 speedups are only wins if task accuracy survives representative data, edge cases, and post-processing.</li>
+          <li><strong>Debugging opacity.</strong> When a tactic is slow or numerically odd, the answer is usually profiling, constraints, or a support ticket — not reading the optimizer.</li>
+        </ul>
+        <h4>Use it after the graph settles</h4>
+        <p>If the model architecture, shapes, and hardware target change weekly, TensorRT will feel like friction. Once they settle, it becomes a high-leverage release artifact.</p>
+        <h4>Make engine build reproducibility part of CI</h4>
+        <p>Keep the ONNX export, TensorRT version, CUDA/container image, calibration set, plugin build, <code>trtexec</code> flags, timing cache, and benchmark report together. Otherwise you cannot explain why the next engine changed.</p>
+        <h4>Do not confuse TensorRT with a serving product</h4>
+        <p>TensorRT runs optimized engines. Triton serves fleets of models. TensorRT-LLM serves LLM generation. vLLM and SGLang optimize open-model request scheduling. They overlap, but they are not interchangeable layers.</p>
+
+        <h2>6 · vs Alternatives</h2>
+        <p>Where TensorRT sits in the 2026 inference landscape.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Option</th><th>What it is</th><th>Relative to TensorRT</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>vLLM</td><td>Open-source LLM serving engine with PagedAttention and continuous batching</td><td>Better default for flexible OpenAI-compatible LLM serving; less about compiling one fixed engine</td></tr>
+              <tr><td>SGLang</td><td>LLM serving framework with RadixAttention and structured-generation focus</td><td>Closer to request orchestration; stronger when prefix reuse and agent/program control dominate</td></tr>
+              <tr><td>TensorRT-LLM</td><td>NVIDIA's LLM-specialized inference stack</td><td>Sibling layer built for generation: in-flight batching, paged KV, FP8, model-specific kernels</td></tr>
+              <tr><td>ONNX Runtime</td><td>Portable inference runtime with execution providers including TensorRT EP</td><td>More portable and easier to integrate; TensorRT is lower-level and usually more specialized on NVIDIA</td></tr>
+              <tr><td>torch.compile / Inductor</td><td>PyTorch compiler path for Python-native model execution</td><td>Better during PyTorch iteration; TensorRT is a more explicit deployment compiler/runtime boundary</td></tr>
+              <tr><td>OpenVINO</td><td>Intel inference toolkit for CPU, iGPU, NPU, and edge deployments</td><td>Better fit for Intel/edge portability; TensorRT owns the NVIDIA GPU optimization lane</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <nav class="post-nav">
+        <a href="./sglang.html">← SGLang</a>
+        <a href="./deepspeed.html">DeepSpeed →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

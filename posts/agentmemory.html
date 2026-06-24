@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>agentmemory — Ethan</title>
+  <meta name="description" content="A TypeScript daemon that turns any MCP-speaking coding agent into one with persistent memory — a STAR analysis of rohitg00/agentmemory." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/agentmemory.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="agentmemory" />
+  <meta property="og:description" content="A TypeScript daemon for persistent memory across MCP-speaking coding agents — STAR analysis." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/agentmemory.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="agentmemory" />
+  <meta name="twitter:description" content="A TypeScript daemon for persistent memory across MCP-speaking coding agents." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">Agent memory · STAR analysis</span>
+        <h1 class="post-title">agentmemory</h1>
+        <p class="post-dek">A TypeScript daemon that turns any MCP-speaking coding agent — Claude Code, Codex, Cursor, OpenCode — into one with persistent memory. Hybrid BM25 + Vector + Graph retrieval, 124 REST endpoints, 53 MCP tools, 1,067 tests. Also: no committed lockfile, zero-auth defaults, and a hidden dependency on a separate engine from the same author's company. Here is what's actually inside, and where it sits versus Mem0, Letta, and Zep.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Repo</dt><dd><a href="https://github.com/rohitg00/agentmemory" target="_blank" rel="noopener">rohitg00/<wbr>agentmemory</a></dd></div>
+        <div><dt>License</dt><dd>Apache-2.0</dd></div>
+        <div><dt>Stack</dt><dd>TypeScript · Node 20+ · iii-engine · SQLite</dd></div>
+        <div><dt>Version</dt><dd>v0.9.21 · pre-1.0</dd></div>
+        <div><dt>Commit</dt><dd>1838f4d7</dd></div>
+        <div><dt>Reviewed</dt><dd>May 2026</dd></div>
+      </dl>
+
+      <div class="prose">
+        <h2>In short</h2>
+        <div class="callout"><p>Five bullets the rest of this report defends with code, citations, and benchmarks.</p></div>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>What it is</h4>
+            <p>A long-running daemon that listens on :3111 and gives MCP-speaking agents persistent memory via 124 REST endpoints, 53 MCP tools, and 12+22 lifecycle hooks for Claude Code and OpenCode. Hybrid retrieval. Apache-2.0.</p>
+          </div>
+          <div class="callout">
+            <h4>Biggest strengths</h4>
+            <p>An unusually thoughtful retrieval stack (RRF over BM25 + Vector + Graph with dynamic weight renormalisation), reproducible LongMemEval-S numbers, broad hook coverage, 1,067 passing tests, and senior-grade boot-time invariants — including a vector-dimension mismatch guard that refuses to start rather than corrupt search silently.</p>
+          </div>
+          <div class="callout">
+            <h4>Biggest concerns</h4>
+            <p>No committed lockfile despite being a published global CLI (#540). Hidden coupling to a separate iii-engine process from the author's company. Default zero-auth on :3111. Marketing comparisons that mix incompatible benchmarks. Single-maintainer bus factor (320 of 362 commits).</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">14.4K</span><span class="label">Stars · 3 mo</span></div>
+          <div class="stat"><span class="num">5.2K</span><span class="label">npm dl / day</span></div>
+          <div class="stat"><span class="num">1,067</span><span class="label">Passing tests</span></div>
+          <div class="stat"><span class="num">95.2%</span><span class="label">LongMemEval R@5</span></div>
+          <div class="stat"><span class="num">v0.9.21</span><span class="label">8 releases · 4 days</span></div>
+        </div>
+
+        <div class="callout accent">
+          <h4>Verdict</h4>
+          <p>Technically interesting and worth trying on a personal machine for Claude Code. Not yet production-ready for shared or multi-tenant deployments. Treat as fast-moving v0.9.x software, not a 14K-star endorsement.</p>
+        </div>
+
+        <h2>1 · Situation — the agent memory landscape</h2>
+        <p>Persistent memory for LLM agents has become its own software category. Where does this repo actually sit?</p>
+        <p>Memory for LLM-powered agents has split, by 2026, into two well-defined camps:</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>Memory as a library / SaaS</h4>
+            <p>Mem0 (56K ⭐, Python, Apache-2.0) and Zep (4.6K ⭐) wrap a vector DB and expose add() / search(). Zep's newer knowledge-graph product, Graphiti, lives in the same lane at 26K ⭐.</p>
+          </div>
+          <div class="callout">
+            <h4>Memory inside a full agent runtime</h4>
+            <p>Letta / MemGPT (22.8K ⭐) is the canonical example, with its core-memory / archival split. LangChain and LlamaIndex offer thinner "memory" primitives bolted onto wider frameworks; neither is positioned as a memory system in its own right.</p>
+          </div>
+        </div>
+        <p>agentmemory stakes out a third position: a memory daemon that runs as a local process, exposes state over REST + MCP + an iii-engine WebSocket, and integrates via hooks into the lifecycle events of coding assistants. The unit of integration isn't from agentmemory import Memory — it's "drop these .mjs hook scripts into your agent config and the daemon will be called on every PostToolUse, SessionStart, Stop event."</p>
+        <p>That positioning is unusual enough to be worth the deep dive. Whether it is better than Mem0 / Letta / Zep depends entirely on whether you live inside the coding-agent ecosystem it targets.</p>
+
+        <h2>2 · Task — what it claims to solve</h2>
+        <p>The README's pitch is unsubtle: "Your coding agent remembers everything. No more re-explaining."</p>
+        <p>Concretely, the headline claims are:</p>
+        <ul>
+          <li>95.2% R@5 retrieval on LongMemEval-S, 88.2% MRR.</li>
+          <li>~92% token reduction vs pasting full context; ~$10/yr running cost with local embeddings.</li>
+          <li>Zero external databases — "SQLite + iii-engine".</li>
+          <li>Auto-capture via 12 Claude Code hooks + 22 OpenCode hooks so the user "never has to call add()".</li>
+          <li>Coverage of Claude Code, Codex CLI, Cursor, Gemini CLI, OpenCode, OpenClaw, Hermes, pi, OpenHuman, Cline, Goose, Kilo Code, Aider, Windsurf, Roo Code, Claude Desktop via MCP plus a small set of native plugins.</li>
+        </ul>
+        <p>Stripped of marketing, the actual gap the project fills is: a vendor-neutral, locally-hosted observation buffer for the coding-agent ecosystem, addressable from anything that speaks MCP or HTTP, with batteries-included retrieval over conversation history. That's a real gap — none of Mem0 / Letta / Zep ship as a "long-running daemon you wire to Claude Code's hooks.json" out of the box.</p>
+
+        <h2>3 · Action — how it actually works</h2>
+        <p>Reading the code, not the README. Six lenses: architecture, storage, retrieval, API surface, integrations, code quality.</p>
+
+        <h3>3.1 Architecture at a glance</h3>
+        <p>The architecture is explicit and somewhat surprising. The package itself is not a memory engine — it's a worker that registers ~50 business-logic functions against an external runtime called iii-engine, which it talks to over a local WebSocket on port 49134. From AGENTS.md:</p>
+        <div class="callout"><p>Everything goes through registerFunction / registerTrigger / sdk.trigger() — never bypass iii-engine with standalone SQLite or in-process alternatives.</p></div>
+        <p>The boot sequence in src/index.ts L166-186 registers the worker and immediately wires up an in-process StateKV wrapper:</p>
+        <pre><code>const sdk = registerWorker(config.engineUrl, {
+  workerName: "agentmemory",
+  invocationTimeoutMs: 180000,
+  otel: { /* ... */ },
+  telemetry: { project_name: "agentmemory", language: "node", framework: "iii-sdk" },
+});
+
+const kv = new StateKV(sdk);</code></pre>
+        <p>StateKV is the thinnest possible shim — every operation is an RPC to the engine (src/state/kv.ts L6-46):</p>
+        <pre><code>async get&lt;T&gt;(scope: string, key: string): Promise&lt;T | null&gt; {
+  return this.sdk.trigger({ function_id: 'state::get', payload: { scope, key } })
+}
+async set&lt;T&gt;(scope: string, key: string, value: T): Promise&lt;T&gt; {
+  return this.sdk.trigger({ function_id: 'state::set', payload: { scope, key, value } })
+}</code></pre>
+        <p>The implication: a single kv.set() is a WebSocket round-trip plus a SQLite write inside another process. On a write-heavy hook (e.g. Claude Code firing PostToolUse after every tool call), latencies compound and timeouts must be defended against. The repo does this with a top-level safety net (src/index.ts L112-129) that swallows unhandledRejections rather than letting one timed-out SDK call kill the daemon. Honest comment, but the pattern admits how fragile the timing is under load.</p>
+        <p>The actual call graph after registration:</p>
+        <figure class="diagram"><svg viewBox="0 0 760 480" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="aham" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aaam" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs><rect x="255" y="12" width="250" height="52" rx="8" class="d-box"/><text x="380.0" y="35.0" text-anchor="middle" class="d-title">Agent</text><text x="380.0" y="53.0" text-anchor="middle" class="d-sub">Claude Code · Codex · Cursor</text><rect x="40" y="120" width="210" height="58" rx="8" class="d-box-2"/><text x="145.0" y="146.0" text-anchor="middle" class="d-title">MCP stdio shim</text><text x="145.0" y="164.0" text-anchor="middle" class="d-sub">@agentmemory/mcp</text><rect x="275" y="120" width="210" height="58" rx="8" class="d-box-2"/><text x="380.0" y="146.0" text-anchor="middle" class="d-title">Hook script</text><text x="380.0" y="164.0" text-anchor="middle" class="d-sub">.mjs → HTTP</text><rect x="510" y="120" width="210" height="58" rx="8" class="d-box-2"/><text x="615.0" y="146.0" text-anchor="middle" class="d-title">Direct iii-sdk</text><text x="615.0" y="164.0" text-anchor="middle" class="d-sub">Python client</text><polyline points="380,64 380,96" fill="none" class="d-edge"/><line x1="145.0" y1="96" x2="615.0" y2="96" class="d-edge"/><line x1="145.0" y1="96" x2="145.0" y2="120" class="d-edge" marker-end="url(#aham)"/><line x1="380.0" y1="96" x2="380.0" y2="120" class="d-edge" marker-end="url(#aham)"/><line x1="615.0" y1="96" x2="615.0" y2="120" class="d-edge" marker-end="url(#aham)"/><rect x="215" y="214" width="330" height="60" rx="8" class="d-box"/><text x="380.0" y="241.0" text-anchor="middle" class="d-title">iii-engine</text><text x="380.0" y="259.0" text-anchor="middle" class="d-sub">REST :3111   ·   ws :49134</text><polyline points="145.0,178 145.0,196" fill="none" class="d-edge"/><polyline points="380.0,178 380.0,196" fill="none" class="d-edge"/><polyline points="615.0,178 615.0,196" fill="none" class="d-edge"/><line x1="145.0" y1="196" x2="615.0" y2="196" class="d-edge"/><line x1="380" y1="196" x2="380" y2="214" class="d-edge" marker-end="url(#aham)"/><rect x="255" y="314" width="250" height="58" rx="8" class="d-box"/><text x="380.0" y="340.0" text-anchor="middle" class="d-title">Worker · this repo</text><text x="380.0" y="358.0" text-anchor="middle" class="d-sub">registered on :49134</text><line x1="380" y1="274" x2="380" y2="314" class="d-edge" marker-end="url(#aham)"/><rect x="255" y="412" width="250" height="56" rx="8" class="d-box-accent"/><text x="380.0" y="437.0" text-anchor="middle" class="d-title">SQLite</text><text x="380.0" y="455.0" text-anchor="middle" class="d-sub">./data/state_store.db</text><line x1="380" y1="372" x2="380" y2="412" class="d-edge" marker-end="url(#aham)"/></svg><figcaption><b>agentmemory request path.</b> Any MCP agent reaches the daemon three ways — stdio shim, hook script, or the iii-sdk directly. All converge on the iii-engine (REST :3111 / ws :49134), which drives the worker in this repo and persists to a local SQLite state store.</figcaption></figure>
+        <p>The viewer runs on restPort + 2 (default :3113) as a fourth surface, served from src/viewer/server.ts.</p>
+        <p>This means agentmemory is not a self-contained npm install. Running npx @agentmemory/agentmemory triggers the iii-console installer (the workaround for which dominated the v0.9.19 changelog) and stands up two processes. The README's "External deps: None (SQLite + iii-engine)" line in the vs-competitors table is technically true only if you don't count "another networked process from the same author's company" as an external dependency. Most reviewers would.</p>
+
+        <h3>3.2 Storage &amp; persistence</h3>
+        <p>State lives in ./data/state_store.db, a SQLite file managed by iii-engine's StateModule. agentmemory only sees logical KV scopes — namespaces like KV.memories, KV.observations(sessionId), KV.commits — defined in src/state/schema.ts.</p>
+        <p>The vector index is in-memory only, persisted lazily. From src/state/vector-index.ts L23-29:</p>
+        <pre><code>export class VectorIndex {
+  private vectors: Map&lt;string, { embedding: Float32Array; sessionId: string }&gt; = new Map();
+  add(obsId: string, sessionId: string, embedding: Float32Array): void {
+    this.vectors.set(obsId, { embedding, sessionId });
+  }</code></pre>
+        <p>Search is brute-force cosine over every stored vector (L35-63) — no ANN index, no HNSW, no IVF. For a few hundred thousand 384-dim vectors that's fine on a laptop; past a few million it will not be. This is the right choice for the stated target ("a personal coding agent on your machine") but disqualifies the daemon from team-scale archives without additional engineering.</p>
+        <p>Where the persistence layer impresses is in defense. The boot path refuses to start if the persisted vector index's dimensionality doesn't match the configured embedding provider (src/index.ts L368-403):</p>
+        <pre><code>throw new Error(
+  `[agentmemory] Refusing to start: persisted vector index has ` +
+    `${mismatches.length} of ${loaded.vector.size} vectors with the ` +
+    `wrong dimension. Active provider (${embeddingProvider?.name}) ` +
+    `declares ${activeDim}; dimensions seen on disk: ${distinct}. ` +
+    /* ... three-line recovery instructions ... */
+);</code></pre>
+        <p>That is exactly the kind of failure mode — silent cross-dim cosine returning 0, recall mysteriously degrades, nobody notices — that bites every team that swaps embedding models. Catching it at boot with an actionable error is a small thing that signals maturity. Most v0.x projects would not bother.</p>
+
+        <h3>3.3 Embedding &amp; retrieval</h3>
+        <p>Embeddings are pluggable across eight providers in src/providers/embedding/: OpenAI, Cohere, Voyage, Gemini, OpenRouter, MiniMax-compatible, CLIP for images, and a local provider built on @xenova/transformers + ONNX (which is why the package has heavy optionalDependencies like onnxruntime-node and @xenova/transformers in package.json L67-72).</p>
+        <p>Detection order is documented in .env.example L62-68: EMBEDDING_PROVIDER override → Gemini → OpenAI → Voyage → Cohere → OpenRouter → local. Default is local all-MiniLM-L6-v2 (384-dim) — free, offline, and what the benchmark numbers were measured against.</p>
+        <p>The retrieval pipeline in src/state/hybrid-search.ts is the most thoughtful code in the repo. Three streams are merged using Reciprocal Rank Fusion with k=60 (L208-219):</p>
+        <pre><code>const combined = Array.from(scores.entries()).map(([obsId, s]) =&gt; ({
+  /* ... */
+  combinedScore:
+    effectiveBm25W   * (1 / (RRF_K + s.bm25Rank)) +
+    effectiveVectorW * (1 / (RRF_K + s.vectorRank)) +
+    effectiveGraphW  * (1 / (RRF_K + s.graphRank)),
+}));</code></pre>
+        <p>Weights are dynamically renormalised when a stream produces no results (L194-206), so a missing embedding provider doesn't drag every BM25 hit's score toward zero. After fusion there is session-level diversification (max 3 results per session) and an optional rerank stage gated by RERANK_ENABLED=true. The graph stream switched from BFS to Dijkstra over weighted edges in v0.9.19 (PR #463) after a contributor benchmarked the BFS edge-count semantics — the kind of upgrade that suggests the project actually cares about retrieval quality, not just headline numbers.</p>
+        <p>The benchmark methodology itself is more honest than the README implies. benchmark/LONGMEMEVAL.md explicitly states:</p>
+        <div class="callout"><p>We do NOT claim these as "LongMemEval scores" — they are retrieval-only evaluations on the LongMemEval-S haystack.</p></div>
+        <p>…and includes a reproducibility recipe (HuggingFace dataset + two npx tsx commands). It also discloses that the closest peer, MemPalace's vector-only baseline, slightly beats agentmemory's hybrid at R@5 (96.6% vs 95.2%). That nuance does not survive the journey to the top-of-README badges, which assert 95.2% retrieval R@5 next to 92% fewer tokens without context. Worse, the vs-competitors table places agentmemory's LongMemEval R@5 (95.2%) next to Mem0's LoCoMo R@5 (68.5%) and Letta's LoCoMo R@5 (83.2%) — different benchmarks on different datasets, which is the kind of comparison a reviewer can't endorse.</p>
+
+        <h3>3.4 Public API surface</h3>
+        <p>agentmemory has not one public API but four:</p>
+        <ul>
+          <li>REST — 124 endpoints under /agentmemory/*, registered in src/triggers/api.ts.</li>
+          <li>MCP — 53 tools (8 visible by default, all behind AGENTMEMORY_TOOLS=all), 6 resources, 3 prompts; registered in src/mcp/server.ts (1,730 lines) and src/mcp/tools-registry.ts (948 lines).</li>
+          <li>iii-sdk function calls — the underlying mem::* worker functions, callable from any iii-sdk client (Node or Python).</li>
+          <li>Hook scripts — .mjs files in plugin/scripts/ that read JSON from stdin and POST to the REST API.</li>
+        </ul>
+        <p>The core verbs are memory_save, memory_recall, memory_smart_search, memory_compress_file, memory_file_history. The MCP handler for memory_save (src/mcp/server.ts L158-187) is a representative pattern: hand-rolled type checks (typeof args.content !== "string"), CSV-to-array parsing for concepts / files, and delegation via sdk.trigger({ function_id: "mem::remember", ... }).</p>
+        <p>A representative backend function is src/functions/remember.ts. It has more semantics than the name suggests — content-level deduplication via Jaccard similarity (L57-70):</p>
+        <pre><code>for (const existing of existingMemories) {
+  if (existing.isLatest === false) continue;
+  const similarity = jaccardSimilarity(lowerContent, existing.content.toLowerCase());
+  if (similarity &gt; 0.7) {
+    supersededId      = existing.id;
+    supersededVersion = existing.version ?? 1;
+    supersededMemory  = existing;
+    break;
+  }
+}</code></pre>
+        <p>…with a versioned supersedes chain, BM25 indexing inside the same call (with a comment explaining why, citing #257), a fire-and-forget vector-index update, and a cascade trigger if anything was superseded. That's a thoughtful implementation. The Jaccard threshold of 0.7 is hard-coded with no configuration, which is the kind of magic number a production user will want to tune.</p>
+        <h4>Two minor API issues worth knowing about</h4>
+        <p>Schema validation is hand-rolled at the MCP and REST boundaries despite zod ^4.0.0 being a direct dependency. Only two internal files import it — src/eval/schemas.ts and src/eval/validator.ts; the user-facing API does not. A Zod-first refactor would shrink the MCP server by hundreds of lines and remove a long tail of edge cases.</p>
+        <p>The Python quickstart is documentation drift. examples/python/quickstart.py L19-28 passes project and title fields to mem::remember, but the registered function signature accepts neither (title is auto-derived from content.slice(0, 80)). The call will succeed silently with the user's intended title discarded. A small but representative example of the rate of feature/doc drift at this release cadence.</p>
+
+        <h3>3.5 Integrations (Claude Code, Codex, OpenCode, MCP, …)</h3>
+        <p>The integration story is genuinely the project's commercial advantage. Native plugins ship in plugin/ for Claude Code (12 hooks), Codex (6 hooks), and OpenCode (22 hooks shipped in v0.9.21 per PR #237). Anything that speaks MCP can be wired with agentmemory connect &lt;agent&gt; (handlers in src/cli/connect/ — claude-code, codex, cursor, gemini-cli, hermes, openclaw, openhuman, pi).</p>
+        <p>The hook scripts under plugin/scripts/ are standalone Node.js — no iii-sdk dependency — that read JSON from stdin, POST to the REST API with a timeout, and exit. Per the AGENTS.md coding standards:</p>
+        <div class="callout"><p>Always use try/catch with AbortSignal.timeout() for best-effort calls.</p></div>
+        <p>That's the right shape: best-effort, non-blocking, isolated from the daemon process. The cost is that the surface area is enormous — Claude Code's PostToolUse fires after every tool call, so a typical session generates dozens of HTTP requests against the daemon. Issue #539 ("PostToolUse hook reads data.tool_output but Claude Code sends tool_response") is a live example of how brittle that hook contract is when the upstream agent's payload shape changes.</p>
+
+        <h3>3.6 Code-quality observations</h3>
+        <p>Reading 140+ source files yields a consistent picture:</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>Test culture is real</h4>
+            <p>95 test files, 1,067 passing tests on the v0.9.21 tag per the changelog. Vitest, vi.mock("iii-sdk"), separate unit vs integration paths. Adversarial cases are real: test/vector-index-dimensions.test.ts, test/viewer-security.test.ts, test/stop-hook-recursion-guard.test.ts, test/replay-sensitive.test.ts.</p>
+          </div>
+          <div class="callout">
+            <h4>Comments violate the rules — usefully</h4>
+            <p>AGENTS.md says "no code comments explaining WHAT — use clear naming instead", but the codebase is densely commented with why. The justification block before the unhandledRejection handler and the eight-line essay explaining why rebuildIndex is fired-and-forgotten are the kind of comments senior engineers love. Policy and practice are out of step; practice wins.</p>
+          </div>
+          <div class="callout">
+            <h4>Concurrency hygiene is decent</h4>
+            <p>Named mutexes via withKeyedLock("mem:remember", ...) (functions/remember.ts L52) protect the read-then-write deduplication path. Vector-index writes are guarded by vectorIndexAddGuarded. Validation, by contrast, is per-handler and ad-hoc — easy to add a new endpoint that gets one check wrong.</p>
+          </div>
+          <div class="callout">
+            <h4>Bus factor is one</h4>
+            <p>GitHub's contributor stats show rohitg00 with 320 commits out of ~362 total across 29 contributors, with the next-most-prolific (Tanmay-008) at 9. Combined with any / as unknown as T casts in load-bearing places like VectorIndex.restoreFrom, this is a project that lives or dies with one person's calendar.</p>
+          </div>
+        </div>
+
+        <h2>4 · Result — does it deliver?</h2>
+        <p>Maturity signals, testing posture, production-readiness verdict, and a ranked list of gotchas.</p>
+
+        <h3>4.1 Maturity signals</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Signal</th><th>Value</th><th>Source</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Stars</td><td>14,370</td><td>gh repo view</td></tr>
+              <tr><td>Forks</td><td>1,194</td><td>same</td></tr>
+              <tr><td>Created</td><td>2026-02-25</td><td>same</td></tr>
+              <tr><td>Latest release</td><td>v0.9.21 (2026-05-19)</td><td>Releases</td></tr>
+              <tr><td>Releases in last 4 days</td><td>8 (v0.9.13 → v0.9.21)</td><td>same</td></tr>
+              <tr><td>Open issues</td><td>70</td><td>Issues</td></tr>
+              <tr><td>Open PRs</td><td>72</td><td>PRs</td></tr>
+              <tr><td>Closed PRs</td><td>252</td><td>GitHub search API</td></tr>
+              <tr><td>Contributors</td><td>29</td><td>gh api contributors</td></tr>
+              <tr><td>Top-1 contributor share</td><td>320 / ~362 ≈ 88%</td><td>same</td></tr>
+              <tr><td>npm downloads / day (2026-05-18)</td><td>~5,220</td><td>npm download API</td></tr>
+              <tr><td>License</td><td>Apache-2.0</td><td>LICENSE</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Read the star count carefully. 14K stars in three months is real attention — the Trendshift badge, the author's viral gist ("1,200 stars / 172 forks"), his DevRel background (GDE @ Google Cloud, CNCF Ambassador, Docker Captain per his profile), and his employer (iii.dev, the same organisation behind the iii-engine the package depends on) together explain it. Stars are a popularity signal, not a quality signal; in this case they're correlated with effective marketing and an audience that already follows the author. The npm downloads — climbing from ~200/day in mid-April to ~5K/day on 2026-05-18 — are the better adoption signal, and they're also strong but at a different scale than the star count suggests.</p>
+        <p>The release cadence is the other thing to weigh. Eight releases in four days, including a v0.9.20 hotfix that reverts a v0.9.19 change after "post-merge field-testing surfaced the underlying issue", is the cadence of active prototyping, not a stable shipping pattern. Pair that with the fact that the project has never crossed 1.0 (it's been v0.9.x since the very first cuts) and you should expect breaking changes between point releases.</p>
+
+        <h3>4.2 Testing &amp; CI</h3>
+        <p>CI is in .github/workflows/ci.yml and runs the test suite on Node 20 and Node 22 on Ubuntu only:</p>
+        <pre><code>- run: npm install --package-lock-only --legacy-peer-deps --no-audit --no-fund
+- run: npm ci --legacy-peer-deps --no-audit --no-fund
+- run: npm run build
+- run: npm test</code></pre>
+        <p>The two-step --package-lock-only then npm ci dance exists because lockfiles are deliberately gitignored at the repo level — the team generates a fresh lockfile on every CI run. This is the design choice that motivates issue #540: "no lockfile makes supply chain attacks more likely". The author's choice is defensible (you avoid lockfile churn in PRs, you always test against the latest patch versions of dependencies) but it has real downsides: every install resolves a fresh dependency tree, every contributor potentially gets a different bundle, and a supply-chain attack on any transitive dep is detected only after it has shipped to a user. For a published CLI consumed via npm install -g, this is a meaningful risk surface that the project should address.</p>
+        <p>Compounding this: there is no Windows or macOS CI matrix — and the open issues confirm cross-platform regressions (#557 "unsupported OS when installing on Windows 11", PR #487 "Windows hook scripts quote plugin paths correctly" — Windows users with spaces in their username had every hook crash). PR #556, still open at time of writing, would add a cross-platform matrix.</p>
+
+        <h3>4.3 Production-readiness verdict</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Use case</th><th>Verdict</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Personal Claude Code / Codex setup on your laptop</td><td>Try it. This is exactly what it's designed for.</td></tr>
+              <tr><td>Team-shared memory server on a shared workstation</td><td>Not yet. No multi-tenant isolation, default zero-auth (triggers/api.ts L37-47), no AGENT_ID scope (open request #554).</td></tr>
+              <tr><td>Production background service in a SaaS product</td><td>No. Pre-1.0, no lockfile, brute-force vector search, single-process architecture, single bus-factor maintainer.</td></tr>
+              <tr><td>Library you embed in your own Node program</td><td>No. It's a daemon, not a library — the public surface is REST/MCP, not an import.</td></tr>
+              <tr><td>Benchmark / research prototype</td><td>Yes. The retrieval stack is reproducible and well-documented.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>4.4 Gotchas &amp; risks (ranked)</h3>
+        <h4>Show-stoppers for shared deployments</h4>
+        <ul>
+          <li>No committed lockfile. Issue #540. Every fresh global install resolves dependencies live. Combined with heavy native optional deps (onnxruntime-node), a non-trivial supply-chain risk.</li>
+          <li>Zero-auth by default on :3111. The auth wrapper short-circuits when AGENTMEMORY_SECRET is unset (triggers/api.ts L37-47 and mcp/server.ts L51). Viewer at :3113 is similarly default-open.</li>
+          <li>Tight coupling to iii-sdk version drift. Issue #555: iii-sdk@0.11.6 breaks routing under the ^0.11.2 pin. Without a lockfile, this fault can hit at any npm install.</li>
+          <li>PII / secret scrubbing is opt-in. The regex-based redactor in functions/privacy.ts only runs when mem::privacy is explicitly invoked. Leaked keys are persisted to memory by default.</li>
+        </ul>
+        <h4>Live bugs &amp; drift</h4>
+        <ul>
+          <li>Marketing comparisons mix benchmarks. The vs-competitors table puts LongMemEval-S R@5 next to Mem0's and Letta's LoCoMo R@5. Different datasets, different tasks.</li>
+          <li>Live bugs in advertised features. #553 "OpenCode plugin exposes only 8 tools instead of advertised 51"; #559 "agentmemory Graph empty"; #544 "viewer shows 0 memories" — all one-day-old as of writing.</li>
+          <li>Documentation drift. The Python quickstart calls mem::remember with parameters the function silently discards. The "no comments" rule is widely (and helpfully) ignored.</li>
+        </ul>
+
+        <h2>5 · vs Mem0 / Letta / Zep</h2>
+        <p>I'll resist the apples-to-oranges README table. The fair dimensions to evaluate on, side by side.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Dimension</th><th>agentmemory</th><th>Mem0</th><th>Letta (MemGPT)</th><th>Zep / Graphiti</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Shape</td><td>Local daemon + MCP/REST + hooks</td><td>Library (Py/JS) + hosted SaaS</td><td>Full agent runtime + server</td><td>Hosted service + Graphiti library</td></tr>
+              <tr><td>Stars / age</td><td>14.4K / 3 mo</td><td>56.2K / 3 yr</td><td>22.8K / 2 yr</td><td>4.6K + 26.3K (Graphiti) / 3 yr</td></tr>
+              <tr><td>Primary language</td><td>TypeScript</td><td>Python</td><td>Python</td><td>Python + Go</td></tr>
+              <tr><td>Coding-agent first?</td><td>Yes — explicit Claude Code / Codex / OpenCode plugins</td><td>No — general agent memory</td><td>Yes-ish (Letta's "agents")</td><td>No — general LLM memory</td></tr>
+              <tr><td>Storage</td><td>SQLite (via iii-engine) + in-mem vectors</td><td>Qdrant or pgvector (you bring it)</td><td>Postgres + vector store</td><td>Postgres + Neo4j (Graphiti)</td></tr>
+              <tr><td>Retrieval</td><td>BM25 + Vector + Graph, RRF, optional rerank</td><td>Vector + Graph extraction</td><td>Vector (archival memory)</td><td>Knowledge graph + semantic</td></tr>
+              <tr><td>Deployment</td><td>Two local processes (this + iii-engine)</td><td>Library import or managed SaaS</td><td>Self-hosted Docker or managed</td><td>Managed SaaS or Neo4j-fronted</td></tr>
+              <tr><td>Multi-tenant</td><td>Not really</td><td>Yes (Platform)</td><td>Yes</td><td>Yes</td></tr>
+              <tr><td>License</td><td>Apache-2.0</td><td>Apache-2.0</td><td>Apache-2.0</td><td>Apache-2.0</td></tr>
+              <tr><td>Maturity</td><td>Pre-1.0</td><td>1.x stable</td><td>0.x but mature</td><td>Stable</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>If you're a Python shop building autonomous agents, you want Letta or Mem0. If you want a managed memory layer with a real knowledge graph, you want Zep / Graphiti. If you live in Claude Code on a single machine and want the daemon to "just listen" via hooks, agentmemory is the only mature option in that exact lane today. That lane is the source of its star count, and also the source of its production limitations.</p>
+
+        <h2>6 · Who should use this?</h2>
+        <p>Buyer-persona guidance. Two clear yeses, two clear nos.</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>✓ Solo developers on Claude Code / Codex / OpenCode</h4>
+            <p>This is the sweet spot. npx @agentmemory/agentmemory once, agentmemory connect claude-code once, get persistent observation history across sessions. Cost is ~$0 with local embeddings.</p>
+          </div>
+          <div class="callout">
+            <h4>✓ Engineers studying MCP-based memory patterns</h4>
+            <p>The hook scripts, the RRF retrieval implementation, and the iii-engine-as-runtime pattern are all worth reading even if you don't adopt the package. Apache-2.0 license makes excerpting straightforward.</p>
+          </div>
+          <div class="callout">
+            <h4>✗ Teams wanting shared multi-developer memory</h4>
+            <p>Wait. The lack of a multi-agent scope (open request #554), zero-auth defaults, and SQLite-on-a-laptop storage mean today's release is wrong for this use case. Re-evaluate after 1.0 + an AGENT_ID scope lands.</p>
+          </div>
+          <div class="callout">
+            <h4>✗ Anyone needing a memory library</h4>
+            <p>Use Mem0 or Letta. agentmemory is not architecturally a library — there is no npm install agentmemory; import { Memory }. It's a daemon you talk to over REST or MCP.</p>
+          </div>
+        </div>
+
+        <h2>7 · Recommendations for the maintainer</h2>
+        <p>In rough order of impact. Three of these have open issues already waiting for them.</p>
+        <h4>Commit a lockfile.</h4>
+        <p>The CI workaround is clever but doesn't help the millions of npm installs that happen outside CI. Even a weekly auto-PR to update package-lock.json is better than no lockfile. Closes the supply-chain concern from #540.</p>
+        <h4>Decouple from iii-sdk minor versions.</h4>
+        <p>Pin the iii-sdk dependency exactly (or vendor the small surface area you use). Issue #555 is otherwise going to recur every time iii-sdk ships a patch.</p>
+        <h4>Stop comparing across benchmarks in marketing.</h4>
+        <p>Drop the LongMemEval vs LoCoMo cross-references from the README. Publish a head-to-head LongMemEval run for Mem0 and Letta if you want a real comparison; otherwise let benchmark/LONGMEMEVAL.md's honest framing speak.</p>
+        <h4>Make zero-auth opt-in rather than opt-out.</h4>
+        <p>Or at least bind to 127.0.0.1 only by default and require an explicit AGENTMEMORY_BIND=0.0.0.0. Today's defaults assume a single-user laptop and won't survive contact with a developer running this on a shared dev box.</p>
+        <h4>Add a Windows + macOS CI matrix.</h4>
+        <p>PR #556 is sitting open. The bug count from Windows users in the issue tracker is the receipt.</p>
+        <h4>Refactor MCP / REST schema validation to Zod.</h4>
+        <p>Zod is already a dependency. The 1,730-line src/mcp/server.ts is the single largest file in the repo, mostly hand-rolled typeof checks. A Zod-first refactor would shrink it dramatically, remove a class of bugs, and auto-generate the MCP inputSchema blocks currently maintained by hand.</p>
+        <h4>Cut a 1.0.</h4>
+        <p>The feature surface is already enormous and velocity is high — but staying at v0.9.x indefinitely communicates "API may change at any time", which is incompatible with the production positioning of the marketing materials.</p>
+
+        <h2>Appendix · repo snapshot</h2>
+        <p>As of 2026-05-20 at commit 1838f4d7. File-tree highlights showing the parts of the codebase worth reading first.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Field</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Repo</td><td>rohitg00/agentmemory</td></tr>
+              <tr><td>Commit reviewed</td><td>1838f4d74c3a0accdd3764e7a8ec155cc140b831 (v0.9.21)</td></tr>
+              <tr><td>Stars / forks</td><td>14,370 / 1,194</td></tr>
+              <tr><td>Created · last push</td><td>2026-02-25 · 2026-05-20</td></tr>
+              <tr><td>License · language</td><td>Apache-2.0 · TypeScript</td></tr>
+              <tr><td>Node engines</td><td>&gt;=20.0.0</td></tr>
+              <tr><td>Total releases</td><td>43 (v0.7.0 → v0.9.21)</td></tr>
+              <tr><td>Tests</td><td>1,067 passing across 95 files</td></tr>
+              <tr><td>Direct / optional deps</td><td>6 / 5 (ONNX runtime + Xenova transformers + jieba + tiny-segmenter)</td></tr>
+              <tr><td>Disk usage</td><td>~23 MB</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <pre><code>src/
+├── index.ts                    boot + iii-sdk worker registration (~530 lines)
+├── auth.ts                     HMAC-based timing-safe compare + viewer CSP
+├── config.ts                   env detection &amp; flag plumbing
+├── state/
+│   ├── kv.ts                   thin RPC shim around iii-engine state::*
+│   ├── schema.ts               KV namespace constants
+│   ├── search-index.ts         BM25 with Porter stemmer + synonyms
+│   ├── vector-index.ts         in-memory Float32Array map, brute-force cosine
+│   └── hybrid-search.ts        ★ RRF fusion of BM25 + Vector + Graph
+├── functions/                  50+ mem::* worker functions
+│   ├── remember.ts             dedup + supersede + index
+│   ├── search.ts / smart-search.ts
+│   ├── consolidate.ts / consolidation-pipeline.ts
+│   ├── graph.ts / graph-retrieval.ts / temporal-graph.ts
+│   ├── crystallize.ts / sketches.ts / reflect.ts
+│   └── privacy.ts              regex-based secret scrubber
+├── providers/
+│   ├── embedding/              openai, cohere, voyage, gemini, openrouter, local, clip
+│   └── anthropic.ts / openai.ts / minimax.ts / openrouter.ts
+├── mcp/
+│   ├── server.ts               53-tool dispatcher (1,730 lines)
+│   ├── tools-registry.ts       MCP tool schemas (948 lines)
+│   ├── standalone.ts           shim used by the @agentmemory/mcp entry
+│   └── transport.ts
+├── triggers/
+│   ├── api.ts                  124 REST endpoints
+│   └── events.ts
+├── hooks/                      Claude Code / Codex hook scripts (TS source)
+├── cli/                        onboarding, connect, doctor, splash
+└── viewer/                     CSP-locked HTML + Node server
+
+plugin/                          shipped to users (not just TS source)
+├── .claude-plugin/plugin.json
+├── .codex-plugin/plugin.json
+├── opencode/                    22-hook OpenCode plugin (PR #237)
+├── scripts/*.mjs                runtime hook scripts (no iii-sdk dep)
+└── skills/                      Claude skills (remember, recall, recap, handoff, ...)
+
+test/                            95 vitest files, 1,067 tests
+benchmark/
+├── LONGMEMEVAL.md               ★ honest benchmark write-up
+├── longmemeval-bench.ts
+├── load-100k.ts                 latency harness (N=1000 in the published result)
+└── data/longmemeval_results_*.json</code></pre>
+        <h2>References</h2>
+        <p>Every claim above traces back to one of these. Permalinks pin to commit 1838f4d7 so they don't rot.</p>
+        <div class="chip-row">
+          <span class="chip">README.md</span>
+          <span class="chip">AGENTS.md</span>
+          <span class="chip">CHANGELOG.md</span>
+          <span class="chip">package.json</span>
+          <span class="chip">src/index.ts</span>
+          <span class="chip">src/state/kv.ts</span>
+          <span class="chip">src/state/vector-index.ts</span>
+          <span class="chip">src/state/hybrid-search.ts</span>
+          <span class="chip">src/functions/remember.ts</span>
+          <span class="chip">src/functions/privacy.ts</span>
+          <span class="chip">src/mcp/server.ts</span>
+          <span class="chip">src/mcp/tools-registry.ts</span>
+          <span class="chip">src/triggers/api.ts</span>
+          <span class="chip">src/auth.ts</span>
+          <span class="chip">.env.example</span>
+          <span class="chip">.github/workflows/ci.yml</span>
+          <span class="chip">benchmark/LONGMEMEVAL.md</span>
+          <span class="chip">benchmark/results/load-100k-96c0ed0.json</span>
+          <span class="chip">examples/python/quickstart.py</span>
+        </div>
+        <p>Issues: #540 no lockfile · #555 iii-sdk 0.11.6 breaks routing · #553 OpenCode plugin only 8 tools · #559 graph empty · #557 Windows install · #544 viewer 0 memories · #539 PostToolUse field mismatch · #554 AGENT_ID feature request</p>
+        <p>PRs: #463 BFS → Dijkstra · #237 OpenCode plugin · #487 Windows path quoting · #556 cross-platform CI · #504 batched embed calls</p>
+        <p>Comparators: mem0ai/mem0 · letta-ai/letta · getzep/zep · getzep/graphiti</p>
+      </div>
+
+      <nav class="post-nav">
+        <a href="../blog.html">← All writing</a>
+        <a href="./codegraph.html">CodeGraph →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

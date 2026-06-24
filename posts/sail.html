@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sail · Rust Spark replacement — Ethan</title>
+  <meta name="description" content="A drop-in Apache Spark replacement written in Rust on DataFusion + Arrow, speaking Spark Connect. What's actually shipped at v0.6.3, and where the marketing outruns the source." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/sail.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="Sail · Rust Spark replacement" />
+  <meta property="og:description" content="A JVM-free Rust reimplementation of Spark's engine on DataFusion + Arrow, behind the Spark Connect protocol — a STAR analysis." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/sail.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Sail · Rust Spark replacement" />
+  <meta name="twitter:description" content="A JVM-free Rust reimplementation of Spark's engine on DataFusion + Arrow." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">Rust query engines · STAR analysis</span>
+        <h1 class="post-title">Sail</h1>
+        <p class="post-dek">A drop-in Apache Spark replacement written in Rust — 257K lines across 36 crates, built on Apache DataFusion + Arrow, speaking the Spark Connect gRPC protocol so existing PySpark code connects by changing one line. The README sells "batch processing, stream processing, and compute-intensive AI workloads on a distributed, multimodal compute engine," and "~4x faster / 94% cheaper." The batch engine is real and fast and the lakehouse breadth is genuinely strong — but three of the four tagline pillars run ahead of the code, and the headline benchmark is a single-node, partly-inferred number. Here is what's actually shipped at v0.6.3, and where the marketing outruns the source.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Repo</dt><dd><a href="https://github.com/lakehq/sail" target="_blank" rel="noopener">lakehq/<wbr>sail</a></dd></div>
+        <div><dt>License</dt><dd>Apache-2.0</dd></div>
+        <div><dt>Stack</dt><dd>Rust · DataFusion · Arrow · PyO3</dd></div>
+        <div><dt>Version</dt><dd>v0.6.3 · pre-1.0</dd></div>
+        <div><dt>Commit</dt><dd>d4971209</dd></div>
+        <div><dt>Reviewed</dt><dd>Jun 2026</dd></div>
+      </dl>
+
+      <div class="prose">
+        <h2>In short</h2>
+        <p>Four pillars in the tagline, four very different maturity levels — defended below with code and the project's own docs.</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>What it is</h4>
+            <p>A JVM-free Rust reimplementation of Spark's engine on DataFusion + Arrow. It implements the Spark Connect protocol, so <code>SparkSession.builder.remote("sc://host:50051")</code> is the only change to run PySpark on it. Local single-process mode + a distributed cluster mode (actor control plane, Arrow Flight data plane). Apache-2.0, backed by the company LakeSail.</p>
+          </div>
+          <div class="callout">
+            <h4>Why it's interesting</h4>
+            <p>The most architecturally correct "post-JVM Spark" bet of 2026: 36 clean crates, a custom in-house Spark-SQL parser, zero-copy PyO3 Python UDFs, native Delta + Iceberg, five catalogs, seven storage backends. The efficiency story is real — a 100GB shuffle with zero spill where Spark spilled 110GB, plus near-instant worker startup.</p>
+          </div>
+          <div class="callout">
+            <h4>Biggest concerns</h4>
+            <p>Three of four tagline pillars run ahead of the code. Streaming is bounded/windowless (<code>not_impl_err!("streaming window")</code>) and the docs contradict themselves on its status. "Multimodal AI engine" is binaryFile reads + Python UDFs + an MCP server. "94% cheaper" is an inferred instance-downsizing claim from a single-node TPC-H. Pre-1.0 (v0.6.3).</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">36</span><span class="label">Crates · ~257K Rust LOC</span></div>
+          <div class="stat"><span class="num">~3.8×</span><span class="label">Single-node 100GB TPC-H</span></div>
+          <div class="stat"><span class="num">0 GB</span><span class="label">Shuffle spill (Spark: 110GB)</span></div>
+          <div class="stat"><span class="num">2.8K</span><span class="label">Stars · 23 releases</span></div>
+          <div class="stat"><span class="num">v0.6.3</span><span class="label">Pre-1.0</span></div>
+        </div>
+
+        <div class="callout accent">
+          <h4>Verdict</h4>
+          <p>The most credible and most architecturally correct open-source "post-JVM Spark" of 2026 — DataFusion + Arrow + Spark Connect is exactly the right thesis, and the engineering behind it is real and large. Worth piloting today for batch SQL/DataFrame ETL where you own the code and can diff the output against Spark; the lakehouse/catalog breadth makes it usable against a real data estate now. But treat "4× / 94% cheaper" as a best-case single-node ceiling, and treat "streaming + AI + multimodal" as roadmap, not shipped pillars. Solid pre-1.0 (v0.6.3, ~2.5 years old, 2.8k stars, Apache-2.0, company-backed).</p>
+        </div>
+
+        <h2>1 · Situation — Spark's JVM tax, and a Rust data stack that grew up</h2>
+        <p>By 2026, Spark is both the planet's default distributed engine and the thing everyone is trying to escape.</p>
+        <p>The complaints about Apache Spark are old and well-rehearsed: the JVM brings garbage-collection pauses that spike tail latency, multi-second executor startup that makes elastic and serverless workloads painful, and a memory model that spills to disk under pressure. A whole category of "Spark accelerators" exists to paper over this — Databricks' proprietary Photon, the open-source DataFusion Comet and Gluten + Velox — each swapping Spark's row-oriented JVM operators for vectorized native ones while keeping the JVM driver and the Spark codebase underneath.</p>
+        <p>Sail makes a more radical bet: don't accelerate Spark, replace it. Throw away the JVM entirely, reimplement the engine in Rust on Apache DataFusion + Arrow, and keep compatibility not at the bytecode level but at the protocol level — Spark Connect, the gRPC API Spark 3.4+ exposes so clients can talk to a remote driver. If you speak Spark Connect fluently, a PySpark program cannot tell whether the other end of the socket is a JVM or a Rust binary. That is the wedge Sail drives in.</p>
+        <p>The timing isn't an accident. DataFusion has matured into a production-grade, extensible SQL engine with a vectorized Arrow core; Arrow is now the lingua franca of columnar data; and Rust's data ecosystem (object_store, the Arrow crates, tokio) is finally rich enough to build a real distributed engine on. Sail is what you get when a well-funded team decides the substrate is finally ready.</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>Apache Spark — the JVM baseline</h4>
+            <p>Mature, ubiquitous, full RDD + Structured Streaming. Sail targets its JVM tax: GC pauses, slow startup, disk spill.</p>
+          </div>
+          <div class="callout">
+            <h4>Comet / Gluten — accelerate under the JVM</h4>
+            <p>Native vectorized operators beneath Spark's JVM driver. Lower-risk, less radical; the JVM stays.</p>
+          </div>
+          <div class="callout">
+            <h4>Photon — proprietary accelerator</h4>
+            <p>Fast but closed and Databricks-locked. Sail is open and engine-replacing, not Spark-accelerating.</p>
+          </div>
+          <div class="callout">
+            <h4>Sail — replace the engine entirely</h4>
+            <p>lakehq/sail (2.8K ⭐, Apache-2.0, Rust) — a JVM-free DataFusion engine behind the Spark Connect protocol. The subject of this report.</p>
+          </div>
+        </div>
+
+        <h2>2 · Task — four promises, not all at the same maturity</h2>
+        <p>The tagline makes four commitments. Separating them up front is the whole point of this report.</p>
+        <p>Sail's one-sentence pitch, verbatim from the README.md: "a drop-in Apache Spark replacement written in Rust, unifying batch processing, stream processing, and compute-intensive AI workloads on a distributed, multimodal compute engine." That sentence makes four promises:</p>
+        <ol>
+          <li><strong>Drop-in Spark compatibility</strong> — PySpark SQL + DataFrame code runs unmodified via Spark Connect, "no code rewrites required."</li>
+          <li><strong>Batch processing</strong> — a faster, cheaper batch engine than Spark.</li>
+          <li><strong>Stream processing</strong> — unified streaming alongside batch.</li>
+          <li><strong>Compute-intensive AI / multimodal</strong> — a "multimodal compute engine" for AI workloads.</li>
+        </ol>
+        <p>The README backs this with hard numbers: "~4x faster (up to 8x in specific workloads) than Spark and 94% cheaper on infrastructure costs" (README L12), and "Proven on ClickBench, outperforming Spark, popular Spark accelerators, Databricks, and Snowflake."</p>
+        <p>The thesis of this report, stated plainly: promises (1) and (2) are real and well-built; promise (3) is genuinely under construction but oversold by the tagline; promise (4) is positioning around real-but-modest plumbing. A reader deciding whether to bet on Sail needs to know which pillars bear weight today — checked against the source at commit d4971209.</p>
+
+        <h2>3 · Action — what's actually in the repository</h2>
+        <p>Eight lenses: the crate graph, Spark Connect, cluster mode, the batch benchmark, streaming, AI/multimodal, lakehouse, project health.</p>
+
+        <h3>3.1 The shape — 36 crates, ~257K lines of Rust, clean separation</h3>
+        <p>Sail is not a thin wrapper. The workspace is 36 crates (<code>crates/</code>) and roughly 257,000 lines of Rust, decomposed with the kind of module discipline that signals a team intending to maintain this for years: a custom SQL front-end (<code>sail-sql-parser</code>, <code>sail-sql-macro</code>, <code>sail-sql-analyzer</code> — built from parser combinators + proc macros, not a fork of someone else's grammar); a full planning stack (logical / physical plan + optimizers); execution + distribution (<code>sail-execution</code>, <code>sail-flight</code>); and the protocol surface (<code>sail-spark-connect</code>).</p>
+        <p>The engine rests on Apache DataFusion 53.1 (Cargo.toml L156) and the Arrow Rust stack. Sail does not reimplement vectorized execution from scratch — it composes DataFusion's operators and adds the Spark semantics, the distribution layer, the lakehouse integrations, and the protocol surface on top. That is the right build-vs-buy call, and it is why chasing Spark parity is plausible at all.</p>
+
+        <h3>3.2 Compatibility — Spark Connect is the whole trick</h3>
+        <p>Sail implements the Spark Connect gRPC service: a PySpark client builds an unresolved logical plan as protobuf, ships it to the server, and Sail translates that into its own logical plan, optimizes, and executes. The entire client-side change (migration guide):</p>
+        <pre><code># before
+spark = SparkSession.builder.getOrCreate()
+# after — the only change
+spark = SparkSession.builder.remote("sc://localhost:50051").getOrCreate()</code></pre>
+        <p>That is the genuinely elegant part. Compatibility is defined by a protocol, not by reproducing Spark's internals — so Sail is free to be a completely different engine underneath while remaining a faithful endpoint. Ibis' PySpark backend works through the same one-line change.</p>
+
+        <h3>3.3 Cluster mode — actor-model control plane, Arrow Flight data plane</h3>
+        <p>Local mode is a single process (the common case, and what the benchmarks use). Cluster mode (architecture doc) is a real distributed system: a server hosts multiple sessions, each driven by a cluster job runner that owns a driver scheduling a physical plan as stages and tasks across workers. Two planes:</p>
+        <figure class="diagram"><svg viewBox="0 0 760 272" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahsail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aasail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs><text x="380" y="18" text-anchor="middle" class="d-eyebrow">Control plane — internal Sail gRPC · lock-free actor model</text><rect x="305" y="32" width="150" height="54" rx="8" class="d-box"/><text x="380.0" y="64.0" text-anchor="middle" class="d-title">Driver</text><rect x="70.0" y="158" width="150" height="54" rx="8" class="d-box-2"/><text x="145.0" y="190.0" text-anchor="middle" class="d-title">worker_1</text><line x1="380" y1="86" x2="145" y2="157" class="d-edge" marker-end="url(#ahsail)"/><rect x="305.0" y="158" width="150" height="54" rx="8" class="d-box-2"/><text x="380.0" y="190.0" text-anchor="middle" class="d-title">worker_2</text><line x1="380" y1="86" x2="380" y2="157" class="d-edge" marker-end="url(#ahsail)"/><rect x="540.0" y="158" width="150" height="54" rx="8" class="d-box-2"/><text x="615.0" y="190.0" text-anchor="middle" class="d-title">worker_3</text><line x1="380" y1="86" x2="615" y2="157" class="d-edge" marker-end="url(#ahsail)"/><polyline points="145,212 145,234" fill="none" class="d-edge-accent" stroke-dasharray="5 4"/><polyline points="380,212 380,234" fill="none" class="d-edge-accent" stroke-dasharray="5 4"/><polyline points="615,212 615,234" fill="none" class="d-edge-accent" stroke-dasharray="5 4"/><line x1="145" y1="234" x2="615" y2="234" class="d-edge-accent" stroke-dasharray="5 4"/><text x="380" y="256" text-anchor="middle" class="d-elabel">Data plane — Arrow Flight gRPC · worker↔worker shuffle, worker→driver results</text></svg><figcaption><b>Two planes.</b> The control plane is an internal gRPC actor model — the driver coordinates workers that never talk to each other directly (lock-free state). The data plane uses Arrow Flight gRPC for worker-to-worker shuffle exchanges and worker-to-driver results.</figcaption></figure>
+        <p>This is a textbook-correct design for a 2026 distributed query engine — and because workers are JVM-free Rust processes, a worker is a static binary that boots in milliseconds, which is exactly what enables the "instant startup / elastic" pitch (arch L38, L40).</p>
+
+        <h3>3.4 The batch benchmark — strong engine, soft headline</h3>
+        <p>The "~4x faster / 94% cheaper" claim comes from benchmark-results. Methodology, stated honestly in the doc itself: a derived TPC-H (L8) at SF100 (~100 GB), 22 queries, on a single AWS r8g.4xlarge (16 vCPU / 128 GB). Result: total query time 387s → 103s ("nearly 4x faster"), and shuffle spill 110 GB → 0 GB.</p>
+        <p>Two things are simultaneously true. The engine is legitimately fast and efficient — a 3.8× wall-clock win and zero shuffle spill where Spark spilled 110 GB is a real result reflecting DataFusion's vectorized core and Rust's memory model. But the headline oversells in three specific ways:</p>
+        <ul>
+          <li><strong>"4×" is an average across a very wide range.</strong> Per-query speedups span roughly 43%–727% — a handful of queries dominate the mean. "Up to 8x in specific workloads" is true; so is "barely faster on some."</li>
+          <li><strong>"94% cheaper" is an inference, not a measurement.</strong> The doc's own logic (L28): "Sail can run on 1/4 the instance size, leading to up to 94% cost reduction." A derived instance-downsizing claim, not a measured cloud bill.</li>
+          <li><strong>It's single-node and single-vendor.</strong> A 100 GB TPC-H on one box is a good engine benchmark but a weak proxy for the distributed, multi-tenant reality where Spark actually hurts — and the baseline Spark spilled 110 GB "despite abundant available memory," hinting at an under-tuned comparator. ClickBench "outperforming Databricks, Snowflake" links to a vendor-hosted redirect.</li>
+        </ul>
+        <p>None of this means the numbers are wrong. It means the honest headline is: "on a single-node 100 GB TPC-H, Sail ran ~3.8× faster with zero shuffle spill, which on paper lets you use a smaller instance." Still excellent. Just not the same sentence as "4x faster and 94% cheaper" full stop.</p>
+
+        <h3>3.5 Streaming — the most oversold pillar (and the most interesting nuance)</h3>
+        <p>Here the tagline and the code disagree in both directions. The README sells "stream processing" as present-tense. But the marketing why-sail page (L16) says latency spikes "will also be eliminated when Sail supports data streaming in the near future," while the migration guide (L67) marks Structured Streaming "✅ (partial)." Three docs, three different maturity signals.</p>
+        <p>The code resolves it: more real than vaporware, less than shipped. There is a substantial streaming subsystem — 21 Rust files across six crates: an event model in <code>sail-common-datafusion</code>, streaming node variants in logical + physical plan, and a StreamingRewriter in <code>rewriter.rs</code>. But that rewriter is candid about its gaps:</p>
+        <pre><code>struct StreamingRewriter;                              // L31
+// TODO: support BarrierNode for streaming properly.   // L52
+not_impl_err!("streaming window: {plan:?}")          // L86</code></pre>
+        <p>So streaming today is bounded / early: real source adapters and a real rewrite path, but windowing is not implemented and barrier handling is a TODO. Structured Streaming's whole point — windowed aggregations, watermarks, stateful operators over unbounded input — is exactly the part that isn't there yet. The infrastructure is genuine and the direction clear, but a reader who expects to port a windowed Spark Streaming job today will be disappointed. The honest label: "streaming engine under active construction; bounded queries work, windowing pending."</p>
+
+        <h3>3.6 "AI / multimodal" — good plumbing, aspirational framing</h3>
+        <p>The fourth pillar is where marketing most exceeds substance, though what is there is real and useful. "Multimodal / AI" decomposes into three concrete things:</p>
+        <ul>
+          <li><strong>Reading binary/multimodal data.</strong> The getting-started doc (L85) shows the whole story: <code>spark.read.format("binaryFile").option("pathGlobFilter","*.png")</code> and a SQL table <code>USING binaryFile</code> over <code>s3://…/*.pdf</code>. Genuinely useful for AI pipelines — but it's ingesting image/PDF blobs, not multimodal compute.</li>
+          <li><strong>Python UDFs via PyO3.</strong> <code>sail-python-udf</code> is the real strength and it's comprehensive — UDFs, UDAFs, UDTFs, group-map and map-iterator UDFs (<code>udf/</code>) bridged into the Arrow engine via PyO3. Run arbitrary Python (incl. ML inference) close to the data with Arrow-native exchange. The legitimately good AI-adjacent feature.</li>
+          <li><strong>An MCP server.</strong> <code>sail spark mcp-server</code> (docs) exposes Spark SQL as Model Context Protocol tools so an LLM agent can query datasets in natural language. A nice bridge — not a compute capability.</li>
+        </ul>
+        <p>What is not in the code: any GPU/tensor/embedding/torch engine (a grep across the crates finds none). So "multimodal compute engine" is positioning. The truthful version: "Sail can ingest binary/multimodal files and run your Python/ML code on them via zero-copy Arrow UDFs, and expose its SQL to LLM agents over MCP." A respectable AI-data-plumbing story — not an AI compute engine, which is what the tagline implies.</p>
+
+        <h3>3.7 Lakehouse and storage — quietly the most complete part</h3>
+        <p>Ironically the pillar the tagline under-sells. Native Delta Lake (<code>sail-delta-lake</code>) and Iceberg (<code>sail-iceberg</code>); a catalog matrix covering AWS Glue, Databricks Unity, Hive Metastore, Iceberg REST, and Microsoft OneLake (catalog crates); and an <code>sail-object-store</code> layer reaching S3, Azure, GCS, HDFS, Hugging Face, Cloudflare R2 and HTTP. For an org whose real question is "can this read my existing lakehouse tables from my existing catalog," the answer is unusually often "yes" — and that, more than streaming or AI, is what makes Sail a plausible Spark substitute for batch ETL today.</p>
+
+        <h3>3.8 Project health — company-backed, concentrated but not fragile</h3>
+        <p>Sail is backed by LakeSail (lakesail.com), which changes the risk calculus versus a solo project. Contribution is concentrated — the top contributor is ~34% of ~1,300 commits, top three/four carry the bulk — but it's a team, with 23 releases and a steady cadence (v0.6.3, 2026-05-21). Numbers: 2,830 stars, 163 forks, 226 open issues, Apache-2.0, ~2.5 years old. The honest maturity read is simply pre-1.0: the API surface and especially cluster mode are younger than local mode; treat v0.6 as "serious pilot, not yet bet-the-farm."</p>
+
+        <h2>4 · Result — what you actually get if you adopt Sail today</h2>
+        <p>Each promise mapped to its delivered state.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Promise (from the tagline)</th><th>Delivered today</th><th>Honest grade</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Drop-in Spark Connect compatibility</td><td>SQL + DataFrame via one-line .remote(); Ibis works</td><td>Strong (with a real long tail)</td></tr>
+              <tr><td>Faster, cheaper batch</td><td>~3.8× on single-node 100GB TPC-H, zero shuffle spill</td><td>Strong engine, soft headline</td></tr>
+              <tr><td>Stream processing</td><td>Bounded streaming infra exists; windowing not_impl</td><td>Under construction</td></tr>
+              <tr><td>AI / multimodal compute</td><td>binaryFile reads + PyO3 UDFs + MCP server</td><td>Useful plumbing, not a compute engine</td></tr>
+              <tr><td>Lakehouse / catalog / storage breadth</td><td>Delta + Iceberg + 5 catalogs + 7 storage backends</td><td>Strong (under-sold)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The resource-efficiency wins are the part most likely to matter in production: a JVM-free worker boots near-instantly (good for elastic/serverless), and an engine that finishes a 100 GB shuffle without spilling to disk where Spark spilled 110 GB both speeds up jobs and shrinks the instance you need. If your pain with Spark is GC tail latency, slow startup, and memory pressure on batch jobs, Sail targets exactly those pains and appears to land hits.</p>
+        <p>The caveats are equally concrete, and the migration guide names them plainly: no RDD (JVM-only, outside Spark Connect, L61), Pandas-on-Spark is roadmap, many Spark configs silently no-op, error messages differ, and storage config is entirely different (your s3a Hadoop settings don't apply). The compatibility checker is explicitly experimental and only verifies whether functions are implemented, not behavioral parity, and doesn't cover SQL strings (L35). The real adoption path is "point a copy of your batch job at Sail, run it on a representative dataset, and diff the output" — which the guide, to its credit, recommends.</p>
+
+        <h2>5 · Takeaways — how to read Sail in 2026</h2>
+        <p>Five calibrated conclusions for an engineer evaluating a Spark replacement.</p>
+        <h4>What's genuinely strong</h4>
+        <ul>
+          <li><strong>The right architecture.</strong> DataFusion + Arrow + Spark Connect is the correct post-JVM Spark thesis, executed with real engineering — 36 crates, a custom SQL parser, an actor/Flight cluster design. Not a toy.</li>
+          <li><strong>Batch efficiency is believable.</strong> ~3.8× and zero-spill on a single-node TPC-H is a great result that reflects the engine, not the marketing.</li>
+          <li><strong>Lakehouse breadth is the sleeper strength.</strong> Native Delta + Iceberg and five catalogs make Sail usable against an existing data estate now.</li>
+          <li><strong>Zero-copy Python UDFs (PyO3)</strong> are comprehensive and the real AI-adjacent win.</li>
+        </ul>
+        <h4>What to discount</h4>
+        <ul>
+          <li><strong>The "4× / 94%" headline.</strong> Averaged, partly-inferred, single-node, single-vendor. Benchmark your workload.</li>
+          <li><strong>Streaming as a shipped pillar.</strong> Real infra but windowing-incomplete, and the docs contradict themselves on status.</li>
+          <li><strong>"Multimodal AI compute engine."</strong> It's binaryFile reads + Python UDFs + MCP — good plumbing, not a compute engine.</li>
+          <li><strong>"Drop-in" as turnkey.</strong> No RDD, partial streaming, silent config no-ops, experimental compat checker — validate before betting production.</li>
+        </ul>
+        <h4>Pilot it where you control the code</h4>
+        <p>Best first bet: a batch SQL/DataFrame ETL job, run side by side with Spark, output diffed. Worst first bet: a windowed streaming pipeline or an RDD-dependent job.</p>
+        <h4>Lead with the lakehouse question</h4>
+        <p>Before chasing the benchmark, confirm Sail reads your tables from your catalog (Glue / Unity / Hive / Iceberg REST / OneLake). That's where adoption succeeds or stalls.</p>
+        <h4>Treat v0.6 as a pilot band</h4>
+        <p>Company-backed and moving fast, but pre-1.0 — cluster mode is younger than local mode. Serious to trial, not yet to bet the farm on.</p>
+
+        <h2>6 · vs Alternatives</h2>
+        <p>Where Sail sits in the 2026 "escape Spark's JVM" landscape.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Option</th><th>What it is</th><th>Relative to Sail</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Sail</td><td>JVM-free Rust engine behind Spark Connect</td><td>This report. Engine-replacing, open, lakehouse-broad; pre-1.0</td></tr>
+              <tr><td>Apache Spark</td><td>The JVM baseline</td><td>Mature, ubiquitous, full RDD + streaming; Sail targets its JVM tax</td></tr>
+              <tr><td>Photon (Databricks)</td><td>Proprietary native accelerator</td><td>Fast but closed + Databricks-locked; Sail is open and engine-replacing</td></tr>
+              <tr><td>Comet / Gluten + Velox</td><td>Open Spark accelerators (native ops under the JVM)</td><td>Keep Spark's JVM driver; Sail removes the JVM entirely</td></tr>
+              <tr><td>DataFusion / Ballista</td><td>The engine Sail builds on</td><td>Lower-level, no Spark API; Sail adds Spark semantics + protocol + distribution</td></tr>
+              <tr><td>Daft</td><td>Rust/Python multimodal dataframe</td><td>Stronger native multimodal/AI, non-Spark API; Sail wins on Spark drop-in</td></tr>
+              <tr><td>DuckDB / Polars</td><td>Single-node analytical engines</td><td>Excellent single-node, no Spark API/cluster; Sail targets distributed + Spark compat</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <nav class="post-nav">
+        <a href="../blog.html">← All writing</a>
+        <a href="./headroom.html">Headroom →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

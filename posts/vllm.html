@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>vLLM · PagedAttention serving engine — Ethan</title>
+  <meta name="description" content="The open-source LLM inference engine that made PagedAttention and continuous batching the default. What's actually inside vLLM at v0.23, the V1 rewrite, and where the complexity bites." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/vllm.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="vLLM · PagedAttention serving engine" />
+  <meta property="og:description" content="The de-facto open-source LLM inference engine — PagedAttention, continuous batching, and the V1 rewrite — a STAR analysis." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/vllm.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="vLLM · PagedAttention serving engine" />
+  <meta name="twitter:description" content="PagedAttention, continuous batching, and the V1 rewrite that runs most open LLMs in production." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">LLM inference engines · STAR analysis</span>
+        <h1 class="post-title">vLLM</h1>
+        <p class="post-dek">The open-source inference engine that turned a memory-management idea — <em>PagedAttention</em> — into the default way the world serves large language models. One paper from UC Berkeley in 2023 became 83K stars, an OpenAI-compatible server every framework targets, and a near-complete V1 rewrite of the engine core. The throughput story is real and the hardware reach is enormous, but the codebase moves fast enough to draw blood: 2,000 open issues, a long tail of model × quantization × backend combinations, and memory tuning that still surprises newcomers. Here is what's actually inside at v0.23, and where the speed comes from.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Repo</dt><dd><a href="https://github.com/vllm-project/vllm" target="_blank" rel="noopener">vllm-project/<wbr>vllm</a></dd></div>
+        <div><dt>License</dt><dd>Apache-2.0</dd></div>
+        <div><dt>Stack</dt><dd>Python · CUDA/HIP (csrc) · PyTorch · Rust</dd></div>
+        <div><dt>Version</dt><dd>v0.23.0 · pre-1.0</dd></div>
+        <div><dt>Stars</dt><dd>~83.5K · 18.3K forks</dd></div>
+        <div><dt>Reviewed</dt><dd>Jun 2026</dd></div>
+      </dl>
+
+      <div class="prose">
+        <h2>In short</h2>
+        <p>One idea — borrow virtual memory from operating systems and apply it to the KV cache — and a community that turned it into infrastructure.</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>What it is</h4>
+            <p>A high-throughput LLM inference and serving engine. It runs open models (Llama, Qwen, Mistral, DeepSeek, Gemma, multimodal VLMs, MoEs) behind an OpenAI-compatible HTTP server (<code>vllm serve</code>) or an offline <code>LLM()</code> Python class. The headline mechanism is <strong>PagedAttention</strong>: the KV cache is stored in fixed-size, non-contiguous blocks mapped through a block table, the way an OS pages physical memory. Apache-2.0, born at UC Berkeley's Sky Computing Lab, now hosted under the PyTorch Foundation.</p>
+          </div>
+          <div class="callout">
+            <h4>Why it's interesting</h4>
+            <p>It solved the bottleneck that capped LLM serving throughput — KV-cache memory fragmentation — and paired it with <strong>continuous (iteration-level) batching</strong> so the GPU never idles waiting for the slowest sequence in a batch. The SOSP'23 paper reported up to 24× the throughput of HuggingFace Transformers. On top of that: automatic prefix caching, chunked prefill, speculative decoding, AWQ/GPTQ/FP8 quantization, tensor + pipeline + expert parallelism, and a from-scratch <strong>V1 engine</strong> with an isolated core process and a near-zero-overhead scheduler.</p>
+          </div>
+          <div class="callout">
+            <h4>Biggest concerns</h4>
+            <p>Velocity is the cost. ~2,000 open issues, frequent breaking changes, and a combinatorial support matrix (each model × quant scheme × attention backend × accelerator is its own correctness surface). <code>gpu_memory_utilization</code> and the V0→V1 migration still trip people. The project is enormous and load-bearing for a whole industry, which makes "it broke on my exact config" both common and high-stakes.</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">~24×</span><span class="label">Throughput vs HF Transformers (SOSP'23)</span></div>
+          <div class="stat"><span class="num">&lt;4%</span><span class="label">KV memory wasted (naive: 60–80%)</span></div>
+          <div class="stat"><span class="num">83.5K</span><span class="label">Stars · 18.3K forks</span></div>
+          <div class="stat"><span class="num">V1</span><span class="label">Re-architected engine core</span></div>
+          <div class="stat"><span class="num">2.0K</span><span class="label">Open issues · fast-moving</span></div>
+        </div>
+
+        <div class="callout accent">
+          <h4>Verdict</h4>
+          <p>The default answer to "how do I serve an open LLM with good throughput," and deservedly so — PagedAttention plus continuous batching is one of the highest-leverage systems ideas of the LLM era, and the V1 rewrite shows the team is willing to pay down its own architectural debt. Adopt it for almost any open-weights serving job; the OpenAI-compatible API means you can drop it behind existing clients. But pin your version, benchmark <em>your</em> model and quant on <em>your</em> GPU, and budget for the operational reality of a project that ships fast and supports an almost unreasonable hardware matrix. Treat the headline throughput multipliers as workload-dependent ceilings, not guarantees.</p>
+        </div>
+
+        <h2>First — one request, end to end</h2>
+        <p>Theory lands better once you have watched the thing run, so here is the whole engine in one launch and one request. vLLM has two front doors; this is the server:</p>
+        <pre><code>$ vllm serve meta-llama/Llama-3.1-8B-Instruct \
+      --max-model-len 8192 \
+      --gpu-memory-utilization 0.90 \
+      --enable-prefix-caching
+INFO  Automatic prefix caching is enabled.
+INFO  Using FlashAttention backend.
+INFO  GPU KV cache: 42,160 tokens  (2,635 blocks x 16)
+INFO  Uvicorn running on http://0.0.0.0:8000</code></pre>
+        <p>That KV-cache line is the entire design in miniature: after loading the weights, vLLM measured the free HBM, carved it into <strong>2,635 fixed blocks of 16 tokens</strong>, and now reports it can hold ~42K tokens of cache across <em>all</em> in-flight requests at once. Send it an ordinary OpenAI request:</p>
+        <pre><code>$ curl localhost:8000/v1/chat/completions -H 'Content-Type: application/json' -d '{
+    "model": "meta-llama/Llama-3.1-8B-Instruct",
+    "messages": [{"role": "user", "content": "Name three uses for paged memory."}],
+    "max_tokens": 96
+  }'</code></pre>
+        <p>Six things happen between that request and the streamed reply, and the rest of this piece is those six things in detail: the front-end <strong>tokenizes</strong> the prompt; the <strong>scheduler</strong> admits it into the current step's batch; the <strong>KV-cache manager</strong> hands it blocks (reusing any whose contents it has already seen); the <strong>executor</strong> runs one forward pass over every active sequence at once; the <strong>sampler</strong> picks the next token; and the loop repeats until an end token or <code>max_tokens</code>, at which point the sequence's blocks are freed for whoever is waiting. The offline path is the same engine minus the HTTP layer:</p>
+        <pre><code>from vllm import LLM, SamplingParams
+
+llm = LLM(model="meta-llama/Llama-3.1-8B-Instruct", enable_prefix_caching=True)
+prompts = ["Name three uses for paged memory."] * 1000      # 1,000 prompts
+outs = llm.generate(prompts, SamplingParams(max_tokens=96))  # batched for you
+print(outs[0].outputs[0].text)</code></pre>
+        <p>A thousand prompts, one <code>generate</code> call, and no batching loop in sight — because continuous batching is the engine's native unit of work, not something you orchestrate. Hold these two snippets in mind; every mechanism below exists only to make them fast.</p>
+
+        <h2>1 · Situation — the KV cache was eating the GPU</h2>
+        <p>By 2023, the thing limiting how many requests a GPU could serve was not compute. It was memory — and specifically how badly the KV cache wasted it.</p>
+        <p>Every token an autoregressive model generates attends to the keys and values of all previous tokens. To avoid recomputing them, servers cache those K/V tensors — the "KV cache." For a 13B model serving long contexts, that cache can be gigabytes per request, and it grows and shrinks unpredictably as sequences start, generate, and finish. The naive approach reserves one contiguous slab per request, sized to the maximum possible length.</p>
+        <p>That reservation is catastrophic. A request that <em>might</em> generate 2,048 tokens but stops at 50 holds memory for 2,048. Slabs of different sizes leave unusable gaps between them (external fragmentation), and the unused tail of each slab is dead weight (internal fragmentation). The vLLM paper measured real systems wasting <strong>60–80%</strong> of KV memory this way. Wasted memory means a smaller batch; a smaller batch means the expensive GPU sits underutilized; underutilization means low throughput and high cost per token.</p>
+        <p>The second problem was scheduling. Classic "static" batching groups N requests, runs them together, and can't return the GPU until the <em>longest</em> sequence in the batch finishes — so short requests wait behind long ones and slots go idle as sequences complete at different times.</p>
+
+        <h2>2 · Task — serve more requests per GPU without rewriting the models</h2>
+        <p>The goal was raw serving efficiency, achieved underneath an unchanged model and a familiar API.</p>
+        <p>vLLM's bet was that you could fix both problems in the serving layer — memory management and scheduling — without touching model weights or asking users to learn a new programming model. Reuse the same transformer definitions, expose the same OpenAI endpoints, and make the engine underneath dramatically more efficient. Two mechanisms carry the weight, and almost everything else in the project is built around protecting their efficiency across more models, more hardware, and more features.</p>
+        <ol>
+          <li><strong>PagedAttention</strong> — eliminate KV-cache fragmentation by paging it like OS virtual memory.</li>
+          <li><strong>Continuous batching</strong> — schedule at every decoding step so finished sequences leave and waiting ones join immediately.</li>
+        </ol>
+
+        <h2>3 · Action — what's actually in the engine</h2>
+        <p>Seven lenses: paged memory, continuous batching, prefix caching, the V1 rewrite, distributed execution, quantization, and the kernel/hardware layer.</p>
+
+        <h3>3.1 PagedAttention — the KV cache as virtual memory</h3>
+        <p>The KV cache is partitioned into fixed-size <strong>blocks</strong> (e.g. 16 tokens each). A sequence's tokens map to a list of blocks through a per-sequence <strong>block table</strong> — exactly an OS page table. Blocks need not be contiguous in GPU memory, so there is no external fragmentation; the only waste is the partially-filled final block of each sequence, which caps internal waste at under one block per request (the paper reports &lt;4%). The attention CUDA kernel (in <code>csrc/</code>) is written to gather K/V from these scattered blocks during the attention computation.</p>
+        <p>Two consequences fall out for free. First, far less waste means far bigger batches on the same card. Second — and this is the elegant part — blocks can be <em>shared</em>. Two requests with the same prompt prefix, or the parallel samples of one beam search, can point their block tables at the same physical blocks, with copy-on-write when they diverge.</p>
+        <p>The arithmetic is deliberately boring, which is the point. With a 16-token block, a 41-token prompt takes <code>ceil(41 / 16) = 3</code> blocks: two full, and one holding 9 live tokens beside 7 slots of bounded slack. The block table is just a list of physical block numbers, so appending a token either writes into the current block's next free slot or, when that block is full, asks the manager for one more block and pushes it onto the list. Nothing is ever copied, resized, or pre-reserved for a length the request may never reach.</p>
+        <figure class="diagram"><svg viewBox="0 0 760 400" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahvp1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aavp1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="24" y="40" width="150" height="176" rx="8" class="d-group"/><text x="99" y="62" text-anchor="middle" class="d-title">Seq A</text>
+        <rect x="40" y="78" width="118" height="34" rx="5" class="d-box-accent"/><text x="99" y="100" text-anchor="middle" class="d-sub">0 &#8594; P1</text>
+        <rect x="40" y="120" width="118" height="34" rx="5" class="d-box"/><text x="99" y="142" text-anchor="middle" class="d-sub">1 &#8594; P4</text>
+        <rect x="40" y="162" width="118" height="34" rx="5" class="d-box"/><text x="99" y="184" text-anchor="middle" class="d-sub">2 &#8594; P6</text>
+        <rect x="24" y="256" width="150" height="130" rx="8" class="d-group"/><text x="99" y="278" text-anchor="middle" class="d-title">Seq B</text>
+        <rect x="40" y="294" width="118" height="34" rx="5" class="d-box-accent"/><text x="99" y="316" text-anchor="middle" class="d-sub">0 &#8594; P1</text>
+        <rect x="40" y="336" width="118" height="34" rx="5" class="d-box"/><text x="99" y="358" text-anchor="middle" class="d-sub">1 &#8594; P7</text>
+        <rect x="470" y="40" width="266" height="320" rx="8" class="d-group"/><text x="603" y="64" text-anchor="middle" class="d-title">Physical KV blocks &#183; GPU HBM</text>
+        <rect x="486" y="80" width="110" height="48" rx="6" class="d-box-accent"/><text x="541" y="109" text-anchor="middle" class="d-sub">P1 shared</text>
+        <rect x="486" y="140" width="110" height="48" rx="6" class="d-box"/><text x="541" y="169" text-anchor="middle" class="d-sub">P4</text>
+        <rect x="486" y="200" width="110" height="48" rx="6" class="d-box"/><text x="541" y="229" text-anchor="middle" class="d-sub">P6</text>
+        <rect x="486" y="260" width="110" height="48" rx="6" class="d-box"/><text x="541" y="289" text-anchor="middle" class="d-sub">P7</text>
+        <rect x="608" y="80" width="110" height="48" rx="6" class="d-box-2"/><text x="663" y="109" text-anchor="middle" class="d-sub">P0 free</text>
+        <rect x="608" y="140" width="110" height="48" rx="6" class="d-box-2"/><text x="663" y="169" text-anchor="middle" class="d-sub">P2 free</text>
+        <rect x="608" y="200" width="110" height="48" rx="6" class="d-box-2"/><text x="663" y="229" text-anchor="middle" class="d-sub">P3 free</text>
+        <rect x="608" y="260" width="110" height="48" rx="6" class="d-box-2"/><text x="663" y="289" text-anchor="middle" class="d-sub">P5 free</text>
+        <line x1="158" y1="95" x2="486" y2="104" class="d-edge-accent" marker-end="url(#aavp1)"/>
+        <line x1="158" y1="137" x2="486" y2="164" class="d-edge" marker-end="url(#ahvp1)"/>
+        <line x1="158" y1="179" x2="486" y2="224" class="d-edge" marker-end="url(#ahvp1)"/>
+        <line x1="158" y1="311" x2="486" y2="104" class="d-edge-accent" marker-end="url(#aavp1)"/>
+        <line x1="158" y1="353" x2="486" y2="284" class="d-edge" marker-end="url(#ahvp1)"/>
+        </svg><figcaption><b>Two block tables, one physical pool.</b> Each sequence's block table maps logical positions to physical blocks that need not be contiguous, so there is no external fragmentation. Both sequences share the same prompt prefix, so position 0 of each points at the same physical block <code>P1</code> (copy-on-write on divergence) — the cache for that prefix is stored once, not twice.</figcaption></figure>
+
+        <h3>3.2 Continuous batching — iteration-level scheduling</h3>
+        <p>Instead of batching whole requests, vLLM batches a single decoding <em>step</em> across whatever sequences are currently active. After each step, finished sequences release their blocks and waiting sequences are admitted, subject to the memory the block manager can hand out. The GPU stays saturated because the batch is recomposed every iteration rather than every request. The request lifecycle:</p>
+        <figure class="diagram"><svg viewBox="0 0 760 560" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahvllm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aavllm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="230" y="20" width="300" height="58" rx="8" class="d-box"/><text x="380" y="44" text-anchor="middle" class="d-title">Incoming requests</text><text x="380" y="64" text-anchor="middle" class="d-sub">OpenAI API · vllm serve / LLM()</text>
+        <line x1="380" y1="78" x2="380" y2="105" class="d-edge" marker-end="url(#ahvllm)"/>
+        <rect x="210" y="106" width="340" height="58" rx="8" class="d-box"/><text x="380" y="130" text-anchor="middle" class="d-title">Scheduler · continuous batching</text><text x="380" y="150" text-anchor="middle" class="d-sub">iteration-level admit / preempt</text>
+        <line x1="380" y1="164" x2="380" y2="191" class="d-edge-accent" marker-end="url(#aavllm)"/>
+        <rect x="190" y="192" width="380" height="64" rx="8" class="d-box-accent"/><text x="380" y="218" text-anchor="middle" class="d-title">KV cache manager · PagedAttention</text><text x="380" y="238" text-anchor="middle" class="d-sub">fixed blocks · block table · prefix reuse</text>
+        <line x1="380" y1="256" x2="380" y2="283" class="d-edge" marker-end="url(#ahvllm)"/>
+        <rect x="210" y="284" width="340" height="58" rx="8" class="d-box"/><text x="380" y="308" text-anchor="middle" class="d-title">Model executor · tensor-parallel</text><text x="380" y="328" text-anchor="middle" class="d-sub">CUDA / HIP kernels · FlashAttention</text>
+        <line x1="380" y1="342" x2="380" y2="369" class="d-edge" marker-end="url(#ahvllm)"/>
+        <rect x="250" y="370" width="260" height="58" rx="8" class="d-box"/><text x="380" y="394" text-anchor="middle" class="d-title">Sampler</text><text x="380" y="414" text-anchor="middle" class="d-sub">logits → next token</text>
+        <line x1="380" y1="428" x2="380" y2="455" class="d-edge" marker-end="url(#ahvllm)"/>
+        <rect x="250" y="456" width="260" height="58" rx="8" class="d-box"/><text x="380" y="480" text-anchor="middle" class="d-title">Stream token</text><text x="380" y="500" text-anchor="middle" class="d-sub">done → free blocks; else loop</text>
+        <path d="M250 485 C120 485 120 135 207 135" fill="none" class="d-edge" stroke-dasharray="5 4" marker-end="url(#ahvllm)"/>
+        <text x="120" y="305" text-anchor="middle" class="d-elabel" transform="rotate(-90 120 305)">next decode step</text>
+        </svg><figcaption><b>One step, many sequences.</b> The scheduler recomposes the batch every decoding iteration; the paged KV manager hands out blocks (reusing shared prefixes); the model runs one step; finished sequences free their blocks and waiting ones take their place.</figcaption></figure>
+        <p>The contrast with classic static batching is easiest to see on a timeline:</p>
+        <figure class="diagram"><svg viewBox="0 0 760 430" role="img" xmlns="http://www.w3.org/2000/svg">
+        <text x="24" y="30" class="d-title">Static batching</text>
+        <text x="24" y="48" class="d-sub">slot frees only when the batch's longest request ends</text>
+        <text x="120" y="83" text-anchor="end" class="d-sub">R1</text>
+        <text x="120" y="115" text-anchor="end" class="d-sub">R2</text>
+        <text x="120" y="147" text-anchor="end" class="d-sub">R3</text>
+        <text x="120" y="179" text-anchor="end" class="d-sub">R4</text>
+        <rect x="150" y="67"  width="540" height="22" rx="4" class="d-box-2"/>
+        <rect x="150" y="99"  width="210" height="22" rx="4" class="d-box-2"/>
+        <rect x="360" y="99"  width="330" height="22" rx="4" class="d-group"/>
+        <rect x="150" y="131" width="150" height="22" rx="4" class="d-box-2"/>
+        <rect x="300" y="131" width="390" height="22" rx="4" class="d-group"/>
+        <rect x="150" y="163" width="320" height="22" rx="4" class="d-box-2"/>
+        <rect x="470" y="163" width="220" height="22" rx="4" class="d-group"/>
+        <line x1="690" y1="60" x2="690" y2="192" class="d-edge" stroke-dasharray="4 4"/>
+        <text x="690" y="206" text-anchor="middle" class="d-elabel">batch ends &#183; slots reused</text>
+        <text x="505" y="147" text-anchor="middle" class="d-elabel">idle &#8212; blocked</text>
+        <text x="24" y="250" class="d-title">Continuous batching</text>
+        <text x="24" y="268" class="d-sub">a finished sequence is replaced the same step</text>
+        <text x="120" y="301" text-anchor="end" class="d-sub">R1</text>
+        <text x="120" y="329" text-anchor="end" class="d-sub">R2</text>
+        <text x="120" y="357" text-anchor="end" class="d-sub">R3</text>
+        <text x="120" y="385" text-anchor="end" class="d-sub">R4</text>
+        <rect x="150" y="285" width="210" height="22" rx="4" class="d-box-2"/>
+        <rect x="360" y="285" width="280" height="22" rx="4" class="d-box-accent"/><text x="500" y="300" text-anchor="middle" class="d-elabel">R5 admitted</text>
+        <rect x="150" y="313" width="150" height="22" rx="4" class="d-box-2"/>
+        <rect x="300" y="313" width="260" height="22" rx="4" class="d-box-accent"/><text x="430" y="328" text-anchor="middle" class="d-elabel">R6 admitted</text>
+        <rect x="560" y="313" width="140" height="22" rx="4" class="d-box-accent"/><text x="630" y="328" text-anchor="middle" class="d-elabel">R7</text>
+        <rect x="150" y="341" width="550" height="22" rx="4" class="d-box-2"/>
+        <rect x="150" y="369" width="30"  height="22" rx="4" class="d-group"/>
+        <rect x="180" y="369" width="480" height="22" rx="4" class="d-box-2"/>
+        <rect x="150" y="404" width="18" height="13" rx="3" class="d-box-2"/><text x="176" y="414" class="d-sub">active</text>
+        <rect x="250" y="404" width="18" height="13" rx="3" class="d-group"/><text x="276" y="414" class="d-sub">idle / blocked</text>
+        <rect x="420" y="404" width="18" height="13" rx="3" class="d-box-accent"/><text x="446" y="414" class="d-sub">newly admitted</text>
+        </svg><figcaption><b>Why the GPU stays busy.</b> Under static batching (top) the four requests start together and the slots cannot be reused until R1, the longest, finishes — so R2, R3, and R4 leave the card idle for the dashed stretches. Continuous batching (bottom) recomposes the batch every decoding step, so the instant R1 or R2 finishes a waiting request (R5, R6, R7) is admitted into the freed slot. Same hardware, far less idle time.</figcaption></figure>
+        <p>This is why a vLLM server keeps throughput high under bursty, mixed-length traffic where static batching would stall — the worst-case "one long request blocks the batch" simply doesn't happen.</p>
+
+        <h3>3.3 Automatic prefix caching — the system-prompt dividend</h3>
+        <p>Because blocks are content-addressable, vLLM hashes block contents and reuses KV blocks across requests that share a prefix. In practice almost every production deployment has a long, identical system prompt (tools, instructions, few-shot examples) in front of every request. With automatic prefix caching enabled, that prefix is computed once and its blocks are reused for every subsequent request — turning a fixed per-request prefill cost into a one-time one. For agent and RAG workloads with heavy shared context, this is frequently a larger real-world win than the raw batching numbers suggest.</p>
+        <p>Make it concrete. Suppose every request carries the same 1,800-token system prompt — tools, instructions, a few worked examples — which is ~113 blocks of KV. The first request pays to prefill it; every request after that is a cache hit on those blocks and prefills only its own short tail:</p>
+        <pre><code>POST /v1/chat/completions      # request 1  (cold)
+  prompt = SYSTEM(1,800 tok) + "Summarize ticket #4821"
+  -&gt; prefill 1,847 tokens
+
+POST /v1/chat/completions      # request 2  (warm)
+  prompt = SYSTEM(1,800 tok) + "Summarize ticket #4822"
+  -&gt; prefix-cache HIT on 113 blocks; prefill 47 tokens   (97% skipped)</code></pre>
+        <figure class="diagram"><svg viewBox="0 0 760 264" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="aavp2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="205" y="28" width="350" height="58" rx="8" class="d-box-accent"/><text x="380" y="54" text-anchor="middle" class="d-title">Shared prefix &#183; system prompt</text><text x="380" y="74" text-anchor="middle" class="d-sub">cached KV ~ 113 blocks, prefilled once</text>
+        <rect x="40"  y="180" width="180" height="56" rx="8" class="d-box"/><text x="130" y="204" text-anchor="middle" class="d-title">Req 1</text><text x="130" y="223" text-anchor="middle" class="d-sub">+ short suffix</text>
+        <rect x="290" y="180" width="180" height="56" rx="8" class="d-box"/><text x="380" y="204" text-anchor="middle" class="d-title">Req 2</text><text x="380" y="223" text-anchor="middle" class="d-sub">+ short suffix</text>
+        <rect x="540" y="180" width="180" height="56" rx="8" class="d-box"/><text x="630" y="204" text-anchor="middle" class="d-title">Req 3</text><text x="630" y="223" text-anchor="middle" class="d-sub">+ short suffix</text>
+        <line x1="380" y1="86" x2="135" y2="178" class="d-edge-accent" marker-end="url(#aavp2)"/>
+        <line x1="380" y1="86" x2="380" y2="178" class="d-edge-accent" marker-end="url(#aavp2)"/>
+        <line x1="380" y1="86" x2="625" y2="178" class="d-edge-accent" marker-end="url(#aavp2)"/>
+        </svg><figcaption><b>The system-prompt dividend.</b> Because blocks are content-addressed, the long shared prefix is prefilled once and its KV blocks are reused by every later request — turning a fixed per-request cost into a one-time one. For agent and RAG traffic, where every call carries the same instructions, this is often a bigger real-world win than the raw batching multipliers.</figcaption></figure>
+
+        <h3>3.4 Chunked prefill and speculative decoding — balancing the two phases</h3>
+        <p>LLM inference has two very different phases: <em>prefill</em> (compute-bound, processes the whole prompt at once) and <em>decode</em> (memory-bound, one token at a time). Mixing them naively means a long prefill stalls everyone's decode. <strong>Chunked prefill</strong> splits a long prompt into chunks and interleaves them with ongoing decode steps, smoothing latency. <strong>Speculative decoding</strong> attacks the memory-bound decode phase from the other side: a cheap drafter (a small model, n-gram lookup, or EAGLE/Medusa heads) proposes several tokens, and the big model verifies them in one pass — multiple tokens per forward step when the draft is good.</p>
+        <pre><code># draft the next 5 tokens with a small model; the 70B verifies them in one pass
+vllm serve meta-llama/Llama-3.1-70B-Instruct \
+    --speculative-config '{"model": "meta-llama/Llama-3.1-8B-Instruct",
+                           "num_speculative_tokens": 5}'</code></pre>
+        <p>On a good draft the big model confirms several tokens per forward pass instead of one, so decode-bound, low-concurrency workloads (a single chat stream, say) speed up without changing the output distribution — verification guarantees exactly the tokens the target would have produced on its own. EAGLE and Medusa heads are cheaper drafters that live inside the target model itself; n-gram lookup is the zero-cost option for highly repetitive text.</p>
+
+        <h3>3.5 The V1 engine — paying down the architecture</h3>
+        <p>vLLM's original engine accreted features until the scheduler and the Python execution path became a measurable overhead at high request rates. The <strong>V1</strong> re-architecture (under <code>vllm/v1/</code>, now the default) isolates the performance-critical <em>EngineCore</em> in its own process, separates it from the API/tokenization front-end, and drives a tighter, near-zero-overhead scheduling loop. It also cleaned up multimodal input handling and made prefix caching and chunked prefill first-class rather than bolt-ons. The lesson worth noting: a project this load-bearing chose to rewrite its core rather than keep patching it — uncommon discipline for open-source infrastructure under this much demand.</p>
+
+        <h3>3.6 Distributed execution — TP, PP, and expert parallelism</h3>
+        <p>For models too big for one GPU, vLLM implements Megatron-style <strong>tensor parallelism</strong> (shard each layer across GPUs), <strong>pipeline parallelism</strong> (split layers across GPUs/nodes), and <strong>expert parallelism</strong> for Mixture-of-Experts models, coordinated through Ray or native multiprocessing. The same <code>--tensor-parallel-size</code> / <code>--pipeline-parallel-size</code> flags scale a deployment from one card to a multi-node cluster without changing the model code.</p>
+
+        <h3>3.7 Quantization and the kernel layer — the breadth that creates the matrix</h3>
+        <p>vLLM supports a wide spread of quantization formats — AWQ, GPTQ, FP8, INT8, GGUF, bitsandbytes — and a stack of attention backends (FlashAttention, FlashInfer, and hardware-specific paths). The custom kernels live in <code>csrc/</code>, and the engine runs not only on NVIDIA but on AMD ROCm, Intel GPUs/CPUs, AWS Neuron, Google TPU, and CPU. This reach is vLLM's superpower and its tax simultaneously: every (model, quant, backend, accelerator) tuple is a distinct code path that can have its own bug, which is the structural reason the issue tracker is so large. The recent appearance of a <code>rust/</code> tree and <code>build_rust.sh</code> hints at moving some hot, latency-sensitive plumbing out of Python.</p>
+
+        <h2>4 · Result — what you get when you deploy it</h2>
+        <p>Each capability mapped to what it delivers in practice.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Mechanism</th><th>What it buys you</th><th>Honest caveat</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>PagedAttention</td><td>&lt;4% KV waste → much larger batches per GPU</td><td>Gains depend on context length &amp; concurrency</td></tr>
+              <tr><td>Continuous batching</td><td>High utilization under mixed-length traffic</td><td>The default; little to tune, much to trust</td></tr>
+              <tr><td>Automatic prefix caching</td><td>Shared system prompts prefilled once</td><td>Biggest win for agent/RAG; off by default in some setups</td></tr>
+              <tr><td>Speculative decoding</td><td>Multiple tokens per step on good drafts</td><td>Helps decode-bound, low-concurrency cases most</td></tr>
+              <tr><td>TP / PP / EP</td><td>One flag scales to multi-GPU / multi-node</td><td>Interconnect-bound; NVLink vs PCIe matters a lot</td></tr>
+              <tr><td>Quantization breadth</td><td>Fit bigger models on smaller cards</td><td>Each format × backend is its own correctness surface</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The thing to internalize: vLLM's wins are <em>throughput</em> wins. If your bottleneck is per-request latency at low concurrency, a single inference's wall-clock improvement is real but smaller than the batch-throughput multipliers imply. If your bottleneck is "how many concurrent users can this GPU serve," that's exactly the axis vLLM was built to bend.</p>
+
+        <h2>5 · Takeaways — how to read vLLM in 2026</h2>
+        <p>Five calibrated conclusions for an engineer choosing a serving stack.</p>
+        <h4>What's genuinely strong</h4>
+        <ul>
+          <li><strong>The core idea is foundational.</strong> PagedAttention + continuous batching is now table-stakes; vLLM is the reference implementation, and the whole field copied it.</li>
+          <li><strong>The OpenAI-compatible server is the integration win.</strong> Point any existing client at it and you're done — that compatibility is half of why it won.</li>
+          <li><strong>Hardware reach is unmatched in open source.</strong> NVIDIA, AMD, Intel, TPU, Neuron, CPU — few projects span that.</li>
+          <li><strong>The V1 rewrite signals real engineering maturity</strong>, not just feature accretion.</li>
+        </ul>
+        <h4>What to budget for</h4>
+        <ul>
+          <li><strong>Version churn.</strong> Pin a version in production; read release notes before bumping. Fast-moving means occasionally sharp.</li>
+          <li><strong>The support matrix.</strong> "Works on my model/quant/GPU" is not transitive — benchmark and validate your exact tuple.</li>
+          <li><strong>Memory tuning.</strong> <code>gpu_memory_utilization</code>, max sequence length, and KV block budget interact; OOMs at load are usually config, not bugs.</li>
+        </ul>
+        <h4>Default to it for serving open weights</h4>
+        <p>For throughput-oriented serving of open models behind an OpenAI API, vLLM is the safe default. The burden of proof is on alternatives to beat it on your specific workload.</p>
+        <h4>Match the tool to the bottleneck</h4>
+        <p>Throughput-bound, many users, shared prompts → vLLM shines. Single-stream lowest-latency on one fixed model/GPU → also weigh a compiled engine (TensorRT-LLM) and measure.</p>
+        <h4>Treat the multipliers as ceilings</h4>
+        <p>"24× / Nx" are real headline numbers under specific conditions. Your mileage is set by context length, concurrency, model size, and hardware — measure it.</p>
+
+        <h2>6 · vs Alternatives</h2>
+        <p>Where vLLM sits in the 2026 inference landscape.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Option</th><th>What it is</th><th>Relative to vLLM</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>vLLM</td><td>PagedAttention serving engine, OpenAI API</td><td>This report. The open-source default; broadest hardware reach</td></tr>
+              <tr><td>SGLang</td><td>RadixAttention serving framework</td><td>Often faster on heavy prefix-sharing / structured output; closest peer</td></tr>
+              <tr><td>TensorRT-LLM</td><td>NVIDIA's compiled inference engine</td><td>Top single-stream latency on NVIDIA; less flexible, heavier build</td></tr>
+              <tr><td>Hugging Face TGI</td><td>HF's production serving server</td><td>Polished ops; adopted vLLM-style ideas; narrower than vLLM today</td></tr>
+              <tr><td>llama.cpp / Ollama</td><td>GGUF CPU/edge runtimes</td><td>Best for local/edge and Macs; not a throughput datacenter server</td></tr>
+              <tr><td>LMDeploy</td><td>Serving toolkit (TurboMind)</td><td>Strong on NVIDIA; smaller ecosystem and model coverage</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <nav class="post-nav">
+        <a href="../blog.html">← All writing</a>
+        <a href="./sglang.html">SGLang →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

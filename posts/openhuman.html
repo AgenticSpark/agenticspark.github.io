@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenHuman — Ethan</title>
+  <meta name="description" content="A Tauri + Rust desktop agent that puts the memory of your life on your own machine, plugs into 118+ services with one-click OAuth, and dispatches each turn to the right model under one subscription." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/openhuman.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="OpenHuman" />
+  <meta property="og:description" content="A Tauri + Rust desktop agent that puts the memory of your life on your own machine, plugs into 118+ services with one-click OAuth, and dispatches each turn to the right model under one subscription." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/openhuman.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="OpenHuman" />
+  <meta name="twitter:description" content="A Tauri + Rust desktop agent with local-first memory, 118+ integrations, and model routing." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">Open-source agent harness</span>
+        <h1 class="post-title">OpenHuman</h1>
+        <p class="post-dek">A Tauri + Rust desktop agent that puts the memory of your life on your own machine, plugs into 118+ services with one-click OAuth, and dispatches each turn to the right model under one subscription. This is what's actually inside, what it's good at, and where it sits versus ChatGPT, Claude, Copilot, Comet and Open Interpreter.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Repo</dt><dd><a href="https://github.com/tinyhumansai/openhuman" target="_blank" rel="noopener">tinyhumansai/<wbr>openhuman</a></dd></div>
+        <div><dt>License</dt><dd>GNU GPL-3.0</dd></div>
+        <div><dt>Stack</dt><dd>Rust · Tauri 2 · React · QuickJS · CEF</dd></div>
+        <div><dt>Version</dt><dd>0.53.45 · early beta</dd></div>
+        <div><dt>Reviewed</dt><dd>May 2026</dd></div>
+      </dl>
+
+      <div class="prose">
+        <h2>What is OpenHuman?</h2>
+        <p>Marketed as a "personal AI super intelligence — private, simple, extremely powerful." Underneath that line is a fairly disciplined architectural bet: most assistants are stateless chat windows; OpenHuman is built around a persistent, local-first memory of your life and a router that picks the right model per task.</p>
+
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>Memory you own</h4>
+            <p>Every email, message, doc, repo and calendar event is canonicalised into Markdown chunks, scored, and folded into hierarchical summary trees stored in SQLite on your own laptop. Mirrored to an Obsidian-compatible vault you can read and edit.</p>
+          </div>
+          <div class="callout">
+            <h4>An agent that fetches itself</h4>
+            <p>118+ OAuth integrations. Every 20 minutes the core walks each connection and pulls fresh data into the Memory Tree. By morning it already has yesterday's emails, PRs and Slack threads in context.</p>
+          </div>
+          <div class="callout">
+            <h4>One subscription, many models</h4>
+            <p>A built-in router sends each turn to the right model — reasoning, fast, vision, summarise, code — across Anthropic, OpenAI, Google, Groq and an optional local Ollama backend. No BYO-key juggling.</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">118+</span><span class="label">Third-party integrations</span></div>
+          <div class="stat"><span class="num">≤ 3k</span><span class="label">Token chunks · Memory Tree</span></div>
+          <div class="stat"><span class="num">20 min</span><span class="label">Auto-fetch tick</span></div>
+          <div class="stat"><span class="num">~1–2 MB</span><span class="label">Per-skill RAM (QuickJS)</span></div>
+          <div class="stat"><span class="num">&lt; 500 ms</span><span class="label">Cold startup target</span></div>
+        </div>
+
+        <h2>Architecture</h2>
+        <p>A monorepo with one Rust crate (openhuman_core) doing the heavy lifting and one TypeScript app (openhuman-app) doing the UI. Tauri 2 ties them together; Chromium Embedded Framework is bolted on for browser/computer control.</p>
+        <p>OpenHuman conceptual architecture: desktop mascot, Memory Tree of markdown documents, and 118+ integration streams</p>
+        <p>A desktop with a mascot, a Memory Tree of Markdown leaves growing behind it, and streams of integration data flowing in. The technical layout is below.</p>
+        <figure class="diagram"><svg viewBox="0 0 760 338" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahoh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aaoh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs><rect x="180" y="12" width="400" height="56" rx="8" class="d-box"/><text x="380.0" y="37.0" text-anchor="middle" class="d-title">React Frontend</text><text x="380.0" y="55.0" text-anchor="middle" class="d-sub">Redux · Socket.io client · MCP transport</text><line x1="380" y1="68" x2="380" y2="128" class="d-edge" marker-end="url(#ahoh)"/><text x="388" y="104" text-anchor="start" class="d-elabel">Tauri IPC bridge</text><rect x="60" y="128" width="640" height="198" rx="10" class="d-group"/><text x="80" y="150" text-anchor="start" class="d-eyebrow">Rust Core · openhuman_core</text><rect x="80" y="164" width="190" height="62" rx="8" class="d-box-2"/><text x="175.0" y="192.0" text-anchor="middle" class="d-title">QuickJS skills</text><text x="175.0" y="210.0" text-anchor="middle" class="d-sub">runtime ~1 MB</text><rect x="285" y="164" width="190" height="62" rx="8" class="d-box-2"/><text x="380.0" y="192.0" text-anchor="middle" class="d-title">Socket manager</text><text x="380.0" y="210.0" text-anchor="middle" class="d-sub">persistent WS</text><rect x="490" y="164" width="190" height="62" rx="8" class="d-box-2"/><text x="585.0" y="192.0" text-anchor="middle" class="d-title">Memory store</text><text x="585.0" y="210.0" text-anchor="middle" class="d-sub">+ AES-GCM</text><rect x="80" y="242" width="190" height="62" rx="8" class="d-box-2"/><text x="175.0" y="270.0" text-anchor="middle" class="d-title">Skill registry</text><text x="175.0" y="288.0" text-anchor="middle" class="d-sub">+ bridge APIs</text><rect x="285" y="242" width="190" height="62" rx="8" class="d-box-2"/><text x="380.0" y="270.0" text-anchor="middle" class="d-title">Cron scheduler</text><text x="380.0" y="288.0" text-anchor="middle" class="d-sub">5s tick loop</text><rect x="490" y="242" width="190" height="62" rx="8" class="d-box-2"/><text x="585.0" y="270.0" text-anchor="middle" class="d-title">Auth / session</text><text x="585.0" y="288.0" text-anchor="middle" class="d-sub">+ OS keychain</text></svg><figcaption><b>OpenHuman architecture.</b> A React front-end talks over the Tauri IPC bridge to a Rust core that runs a sandboxed QuickJS skills runtime (~1 MB), persistent socket manager, encrypted memory store, skill registry, cron scheduler, and OS-keychain-backed auth.</figcaption></figure>
+
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>Why Tauri + Rust, not Electron</h4>
+            <p>Per-skill context costs ~1–2 MB on the embedded QuickJS runtime instead of a full Chromium renderer. Cold start is sub-500 ms. Tokio drives all I/O — WebSockets, HTTP, file work — as non-blocking tasks on a small thread pool. TLS goes through rustls, not OpenSSL. The trade-off: more platform work and no mobile/web targets today.</p>
+          </div>
+          <div class="callout">
+            <h4>Dual-socket realtime</h4>
+            <p>A Rust-native WebSocket client (tokio-tungstenite + rustls) on desktop survives app backgrounding and runs independently of the WebView; a JS Socket.io client is reserved for the experimental web build. Telegram, Discord and triggers ride the persistent socket.</p>
+          </div>
+          <div class="callout">
+            <h4>Skills as sandboxed JS</h4>
+            <p>Skills are JS modules executed inside QuickJS with enforced resource limits and a typed bridge to Rust APIs. They install from the Skills tab, react to triggers, run on cron, and write into the same Memory Tree as everything else.</p>
+          </div>
+          <div class="callout">
+            <h4>Browser &amp; computer control via CEF</h4>
+            <p>An embedded Chromium surface lets the agent open URLs, take screenshots, click, type and drag. Movement uses human-like trajectories (anti-bot-detection). Useful for sites with no API and for driving local apps from chat.</p>
+          </div>
+        </div>
+
+        <h2>The five pillars</h2>
+        <p>Strip away the marketing and OpenHuman is doing five things that most "AI assistant" apps don't.</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>1 · Memory Tree</h4>
+            <p>Local SQLite + Markdown vault. Three trees — per-source, per-topic, daily global — built from scored chunks. Embeddings live inside but the structure on top is what makes the memory feel like a brain instead of a bag of fragments.</p>
+            <div class="chip-row"><span class="chip">SQLite</span><span class="chip">Markdown</span><span class="chip">Obsidian-compatible</span><span class="chip">Local-first</span></div>
+          </div>
+          <div class="callout">
+            <h4>2 · Auto-fetch</h4>
+            <p>Every 20 minutes a worker walks each active connection and pulls fresh data into the tree. By morning the agent already has overnight Slack, last night's GitHub events, and today's calendar. No "give it a few weeks" cold-start penalty.</p>
+            <div class="chip-row"><span class="chip">20 min loop</span><span class="chip">118+ providers</span><span class="chip">Composio-backed</span></div>
+          </div>
+          <div class="callout">
+            <h4>3 · TokenJuice</h4>
+            <p>A three-layer JSON rule overlay (built-in / user / project) compacts every tool result before it touches an LLM. A git status, a 600-message email thread, a kubectl dump — all reduced before paying tokens. Claim: ingesting six months of email costs single-digit dollars instead of hundreds.</p>
+            <div class="chip-row"><span class="chip">Builtin → User → Project</span><span class="chip">JSON rules</span><span class="chip">Hot-reloaded</span></div>
+          </div>
+          <div class="callout">
+            <h4>4 · Model router</h4>
+            <p>Each chat call passes either a concrete model or a hint — hint:reasoning, hint:fast, hint:vision, hint:summarize, hint:code. The router resolves it to a (provider, model) at runtime. The agent loop emits hints; the user never picks. One subscription, many providers.</p>
+            <div class="chip-row"><span class="chip">Anthropic</span><span class="chip">OpenAI</span><span class="chip">Google</span><span class="chip">Groq</span><span class="chip">Ollama (local)</span></div>
+          </div>
+          <div class="callout">
+            <h4>5 · Mascot · voice · meeting agent</h4>
+            <p>A Remotion-rendered desktop face with viseme-driven lip-sync, hosted TTS, STT, and a Google Meet bot that joins as a real participant — listens, transcribes into the Memory Tree, and speaks back into the call. A "subconscious" loop keeps it thinking while you're idle; a "dreaming" pass consolidates the day when you're away.</p>
+            <div class="chip-row"><span class="chip">Remotion</span><span class="chip">ElevenLabs TTS</span><span class="chip">Google Meet bot</span><span class="chip">Subconscious</span></div>
+          </div>
+          <div class="callout">
+            <h4>+ Native toolbelt</h4>
+            <p>Web search, web-fetch scraper, full coder kit (filesystem, git, lint, test, grep), browser + computer control, cron, memory tools and a sub-agent spawner — wired in by default. No "install a plugin to read a file."</p>
+            <div class="chip-row"><span class="chip">No-plugin baseline</span><span class="chip">Sub-agents</span><span class="chip">Cron</span></div>
+          </div>
+        </div>
+
+        <h2>Inside the Memory Tree</h2>
+        <p>This is the load-bearing piece. Most "AI memory" features are a sticky note bolted to a chat. OpenHuman's is a deterministic, bucket-sealed pipeline.</p>
+        <figure class="diagram"><svg viewBox="0 0 760 624" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahohmem" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aaohmem" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs><rect x="160.0" y="12" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="39.0" text-anchor="middle" class="d-title">Source adapters</text><text x="380.0" y="57.0" text-anchor="middle" class="d-sub">chat · email · document</text><rect x="160.0" y="102" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="129.0" text-anchor="middle" class="d-title">Canonicalize</text><text x="380.0" y="147.0" text-anchor="middle" class="d-sub">normalised Markdown + provenance</text><rect x="160.0" y="192" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="219.0" text-anchor="middle" class="d-title">Chunker</text><text x="380.0" y="237.0" text-anchor="middle" class="d-sub">deterministic IDs · ≤ 3k-token segments</text><rect x="160.0" y="282" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="309.0" text-anchor="middle" class="d-title">Content store</text><text x="380.0" y="327.0" text-anchor="middle" class="d-sub">atomic .md files on disk</text><rect x="160.0" y="372" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="399.0" text-anchor="middle" class="d-title">Store</text><text x="380.0" y="417.0" text-anchor="middle" class="d-sub">chunks · scores · summaries · jobs</text><rect x="160.0" y="462" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="489.0" text-anchor="middle" class="d-title">Score</text><text x="380.0" y="507.0" text-anchor="middle" class="d-sub">signals + embeddings + entities</text><rect x="160.0" y="552" width="440" height="60" rx="8" class="d-box-accent"/><text x="380.0" y="579.0" text-anchor="middle" class="d-title">Retrieval</text><text x="380.0" y="597.0" text-anchor="middle" class="d-sub">ranked context to the agent</text><line x1="380.0" y1="72" x2="380.0" y2="101" class="d-edge" marker-end="url(#ahohmem)"/><line x1="380.0" y1="162" x2="380.0" y2="191" class="d-edge" marker-end="url(#ahohmem)"/><line x1="380.0" y1="252" x2="380.0" y2="281" class="d-edge" marker-end="url(#ahohmem)"/><line x1="380.0" y1="342" x2="380.0" y2="371" class="d-edge" marker-end="url(#ahohmem)"/><line x1="380.0" y1="432" x2="380.0" y2="461" class="d-edge" marker-end="url(#ahohmem)"/><line x1="380.0" y1="522" x2="380.0" y2="551" class="d-edge" marker-end="url(#ahohmem)"/></svg><figcaption><b>OpenHuman Memory Tree.</b> Every source is canonicalised to Markdown, chunked deterministically, persisted as atomic files, then scored and embedded so the agent retrieves ranked, provenance-tagged context.</figcaption></figure>
+
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>Source trees</h4>
+            <p>Per-source rolling buffer (L0) that seals into L1 → L2 → … as it fills. One per Gmail label, one per Slack channel, one per uploaded document. Gives you provenance: "what did the Stripe webhook say last Tuesday at 3pm?"</p>
+          </div>
+          <div class="callout">
+            <h4>Topic trees</h4>
+            <p>Per-entity summaries, materialised lazily by hotness. The more an entity (person, project, ticker, repo) shows up, the more aggressively its tree is rebuilt. Gives you "what's the latest on this person?"</p>
+          </div>
+          <div class="callout">
+            <h4>Global tree</h4>
+            <p>One daily UTC digest across everything ingested that day. Gives you "what happened today?" Built by a scheduled background pass, not at query time.</p>
+          </div>
+        </div>
+
+        <h3>Where it lives on disk</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Path</th><th>What's there</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>&lt;workspace&gt;/memory_tree/chunks.db</td><td>Chunks, scores, summaries, entity index, jobs, hotness signals</td></tr>
+              <tr><td>&lt;workspace&gt;/wiki/</td><td>The Markdown vault — open it in Obsidian, browse, edit, copy, delete</td></tr>
+              <tr><td>OS keychain</td><td>OAuth tokens (macOS Keychain · Windows Credential Mgr · Linux Secret Service)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Default workspace is ~/.openhuman, overridable via OPENHUMAN_WORKSPACE. Everything in memory_tree/ and wiki/ is local — raw source data never leaves the laptop unless you explicitly send it in a chat message.</p>
+
+        <h2>Native toolbelt</h2>
+        <p>Wired in at install time. No plugin marketplace, no per-tool OAuth.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Tool group</th><th>What it does</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Web search</td><td>Search the web via a backend proxy</td><td>You don't carry a search API key</td></tr>
+              <tr><td>Web scraper</td><td>Fetch a URL and return cleaned content</td><td>Output goes through TokenJuice before the LLM sees it</td></tr>
+              <tr><td>Coder kit</td><td>Filesystem · git · lint · test · grep</td><td>Runs out of the box; sub-agents reuse it</td></tr>
+              <tr><td>Browser control</td><td>Open URL · screenshot · inspect</td><td>CEF-backed embedded webview, security-scoped</td></tr>
+              <tr><td>Computer control</td><td>Mouse + keyboard, human-trajectory paths</td><td>For sites/apps without an API</td></tr>
+              <tr><td>Cron / scheduler</td><td>5-second tick loop in core; skills register schedules</td><td>Survives app backgrounding</td></tr>
+              <tr><td>Memory tools</td><td>search · drill_down · topic · global · fetch</td><td>Targets any of the three trees</td></tr>
+              <tr><td>Agent coordination</td><td>Spawn sub-agents with their own context</td><td>Each gets a typed tool surface</td></tr>
+              <tr><td>Voice</td><td>STT in · TTS out · mascot lip-sync · Google Meet bot</td><td>Audio buffers discarded after STT; TTS streamed from the backend</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>OpenHuman vs the field</h2>
+        <p>Five other things people put in the same mental bucket: a flagship consumer chatbot, two desktop assistants from frontier labs, the OS-level Microsoft offering, an "agentic browser," and the closest open-source analog. OpenHuman makes a different bet than any of them.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th></th><th>OpenHuman</th><th>ChatGPT (consumer)</th><th>Claude Desktop / Code</th><th>Microsoft Copilot</th><th>Perplexity Comet</th><th>Open Interpreter</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>License</td><td>GPL-3.0 (open source)</td><td>Proprietary</td><td>Proprietary</td><td>Proprietary</td><td>Proprietary</td><td>AGPL-3.0</td></tr>
+              <tr><td>Form factor</td><td>Tauri desktop app · Win/macOS/Linux</td><td>Web · iOS/Android · macOS/Win desktop</td><td>Desktop app · CLI (Claude Code)</td><td>OS-integrated (Win 11) · M365 apps · web</td><td>Standalone agentic browser</td><td>Python CLI + local server</td></tr>
+              <tr><td>Persistent memory</td><td>Three-tree local Memory Tree + Obsidian vault</td><td>Chat-scoped "memories" (server-side, opt-in)</td><td>Project-scoped context · "Projects" feature</td><td>M365 Graph context (work-tenant)</td><td>Browser session + light history</td><td>None (per-conversation)</td></tr>
+              <tr><td>Built-in integrations</td><td>118+ via one-click OAuth (Composio)</td><td>~10 first-party connectors + Apps SDK</td><td>MCP servers (BYO) + small native set</td><td>Native to MS apps; limited 3rd-party</td><td>Web only (no SaaS connectors)</td><td>None (write your own)</td></tr>
+              <tr><td>Auto-fetch / proactive</td><td>20-min sync into Memory Tree</td><td>No</td><td>No</td><td>Limited (M365 signals)</td><td>No</td><td>No</td></tr>
+              <tr><td>Token compression</td><td>TokenJuice rule overlay</td><td>Internal, opaque</td><td>Internal, opaque</td><td>Internal, opaque</td><td>Internal, opaque</td><td>None</td></tr>
+              <tr><td>Model routing</td><td>Built-in hint router · multi-provider</td><td>OpenAI only (model picker)</td><td>Anthropic only</td><td>OpenAI + MS (curated)</td><td>Multi-model picker (curated)</td><td>BYOK any provider, manual choice</td></tr>
+              <tr><td>Computer / browser use</td><td>CEF browser + mouse/keyboard</td><td>Operator (separate paid product)</td><td>Computer Use API (developer feature)</td><td>Copilot Vision (read-only screen)</td><td>Native — that's the product</td><td>Full local shell + code exec</td></tr>
+              <tr><td>Voice / mascot</td><td>TTS + STT + animated face + Google Meet bot</td><td>Advanced Voice Mode (no avatar)</td><td>Voice mode (mobile)</td><td>Voice in Win + M365</td><td>None</td><td>None</td></tr>
+              <tr><td>Local-first data</td><td>SQLite + Markdown on disk · OS keychain</td><td>Server-side</td><td>Server-side (some local caches)</td><td>Cloud (M365 tenant)</td><td>Server + local browser state</td><td>Fully local</td></tr>
+              <tr><td>On-device LLM option</td><td>Optional Ollama for embed/summarise</td><td>No</td><td>No</td><td>Phi/Recall (Copilot+ PCs)</td><td>No</td><td>Yes (any local provider)</td></tr>
+              <tr><td>Pricing model</td><td>One subscription brokers all providers</td><td>Free / Plus / Pro / Team / Enterprise</td><td>Free / Pro / Team / Enterprise + API</td><td>Bundled with M365 / Copilot Pro</td><td>Pro subscription</td><td>Free; you pay your own model bills</td></tr>
+              <tr><td>Best at</td><td>Personal context · cross-app workflows · always-on agent</td><td>General chat · broad ecosystem</td><td>Code · long-form reasoning · safety</td><td>Work in M365 documents · enterprise</td><td>Live web research, click-through tasks</td><td>Local code execution and shell tasks</td></tr>
+              <tr><td>Worst at</td><td>Maturity · single-vendor backend dependency</td><td>Privacy / on-device control</td><td>Out-of-the-box SaaS connectors</td><td>Non-Microsoft stack</td><td>Non-browser tasks · memory</td><td>UX · normal-user adoption</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Read the highlighted rows together and the design intent is clear: OpenHuman is making the bets nobody else is making — open-source license, three-tree local memory, batteries-included integrations, a structural token-compression layer. The trade-off is everywhere else: it is younger, less polished, and depends on the OpenHuman backend to broker LLM calls and OAuth.</p>
+
+        <h2>Honest take</h2>
+        <p>No product is all upside. Here's what looks genuinely strong and where the cracks are likely to show.</p>
+        <h3>What's genuinely strong</h3>
+        <ul>
+          <li>The memory architecture. Trees + provenance + hotness is closer to how a brain remembers than any vector blob. The fact that the vault is plain Markdown means you keep your data even if the company disappears.</li>
+          <li>TokenJuice as a first-class layer. Putting compression at the tool/result boundary — not as a model trick — is the right place. It's what makes 20-minute auto-fetch sustainable.</li>
+          <li>Hint-driven routing. "The task picks the model, not the user" is a real cost-and-quality win once the agent is doing dozens of internal calls per turn.</li>
+          <li>Tauri + Rust + QuickJS. ~1–2 MB per skill versus ~150 MB per Electron renderer is not a vanity number — it's why the subconscious loop and the meeting bot can run continuously without melting the laptop.</li>
+          <li>Genuinely batteries-included. Voice, search, scraper, coder kit, browser, computer, cron, sub-agents and 118 integrations on day one is rare in open-source land.</li>
+        </ul>
+        <h3>Where it could bite</h3>
+        <ul>
+          <li>Single backend dependency. Unless you flip on Local AI (Ollama) for everything, every LLM call, every search, every TTS stream goes through the OpenHuman backend. That's a single vendor and a single trust boundary.</li>
+          <li>Composio-backed connectors. The 118+ figure leans on a third party. If Composio changes terms or pricing, the integration story changes with it.</li>
+          <li>Desktop-only, no mobile. The architecture doc is explicit: Android, iOS and a standalone web client are out of scope today.</li>
+          <li>GPL-3.0 means no closed-source forks. Good for the commons; a non-starter for some commercial integrations.</li>
+          <li>"Early beta" is real. Version 0.53.x, active development, the README warns "expect rough edges." The headline features (Memory Tree, mascot, Meet bot) are big surface areas to harden.</li>
+          <li>Always-on auto-fetch is a privacy posture choice. Even with local-first storage, syncing every 20 minutes from Gmail / Slack / Calendar is a meaningful trust ask. The privacy boundary is documented but worth reading before turning everything on.</li>
+        </ul>
+
+        <h2>So who is it actually for?</h2>
+        <h3>Buy in if you are…</h3>
+        <ul>
+          <li>An individual power user who wants your assistant to know your stack — Gmail, Slack, GitHub, Notion, Calendar — without writing glue code.</li>
+          <li>A developer who likes the idea of an agent that can debug code, read a repo, draft a PR, and take notes from a Google Meet — all from one app.</li>
+          <li>Someone who cares about owning the data: a Markdown vault on disk you can grep beats a server-side memory blob you can't see.</li>
+          <li>An OSS-friendly tinkerer happy to live near the bleeding edge.</li>
+        </ul>
+        <h3>Pass if you are…</h3>
+        <ul>
+          <li>An enterprise buyer needing tenant-level controls, SOC2 paper, an SLA, and a "no third party in the loop" story today.</li>
+          <li>A mobile-first user — there is no iOS or Android client.</li>
+          <li>Someone who needs the absolute frontier model on every turn — the router will sometimes pick fast/cheap models for cost reasons.</li>
+          <li>Allergic to GPL-3.0 in your stack.</li>
+        </ul>
+
+        <h2>My one-liner</h2>
+        <div class="callout accent">
+          <h4>My one-liner</h4>
+          <p>OpenHuman is the most architecturally interesting open-source agent harness shipping in 2026. It treats memory, integrations, token compression and model routing as first-class system components rather than features bolted on later. Whether it survives contact with users at scale is the open question — but the bets it's making are the right ones.</p>
+        </div>
+
+        <h2>Sources</h2>
+        <ul>
+          <li>GitHub repo — tinyhumansai/openhuman (README, AGENTS.md, CLAUDE.md, Cargo.toml at v0.53.45)</li>
+          <li>Architecture reference — gitbooks/developing/architecture.md</li>
+          <li>Memory Tree — gitbooks/features/obsidian-wiki/memory-tree.md</li>
+          <li>Token compression — gitbooks/features/token-compression.md · upstream vincentkoc/tokenjuice</li>
+          <li>Model routing — gitbooks/features/model-routing/README.md</li>
+          <li>Integrations (Composio-backed) — gitbooks/features/integrations/README.md</li>
+          <li>Mascot &amp; subconscious — gitbooks/features/mascot/README.md</li>
+          <li>Privacy &amp; security — gitbooks/features/privacy-and-security.md</li>
+          <li>Browser &amp; computer control — gitbooks/features/native-tools/browser-and-computer.md</li>
+          <li>Competitor product info from each vendor's public docs as of May 2026 (OpenAI, Anthropic, Microsoft, Perplexity, Open Interpreter). Capabilities evolve quickly — verify before quoting.</li>
+        </ul>
+      </div>
+
+      <nav class="post-nav">
+        <a href="../blog.html">← All writing</a>
+        <a href="./agentmemory.html">agentmemory →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

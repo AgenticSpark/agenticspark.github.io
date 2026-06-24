@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Drifting Models — Ethan</title>
+  <meta name="description" content="A new generative-modeling paradigm where training iterations nudge a one-step generator's output distribution toward the data." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/drifting-models.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="Drifting Models" />
+  <meta property="og:description" content="A new generative-modeling paradigm where training iterations nudge a one-step generator's output distribution toward the data." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/drifting-models.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Drifting Models" />
+  <meta name="twitter:description" content="A new generative-modeling paradigm where training iterations nudge a one-step generator's output distribution toward the data." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">Paper · arXiv 2602.04770 · Generative modeling</span>
+        <h1 class="post-title">Drifting Models</h1>
+        <p class="post-dek">A new generative-modeling paradigm. Instead of training a network to predict a noise-to-data trajectory and then walking it iteratively at inference, Drifting Models iterate at training time: each gradient step nudges the network's output distribution toward the data, until the two match. The result is a one-step generator that hits FID 1.54 on ImageNet 256² in latent space and 1.61 in pixel space — state of the art among single-step methods, and competitive with 500-NFE diffusion.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Paper</dt><dd><a href="https://arxiv.org/abs/2602.04770" target="_blank" rel="noopener">arXiv:2602.04770v2</a></dd></div>
+        <div><dt>Project page</dt><dd><a href="https://lambertae.github.io/projects/drifting" target="_blank" rel="noopener">lambertae.github.io/projects/drifting</a></dd></div>
+        <div><dt>Authors</dt><dd>Mingyang Deng et al.</dd></div>
+        <div><dt>Published</dt><dd>Feb 2026 (v2)</dd></div>
+        <div><dt>Read</dt><dd>May 2026</dd></div>
+      </dl>
+
+      <p class="fig-caption">Single-pass generator f_θ maps noise to samples; a drifting field attracts samples toward data modes and repels them from each other.<span class="fig-sub">One forward pass at inference. The iteration that turns noise into data happens during training, not after it.</span></p>
+
+      <div class="prose">
+        <div class="sec-eyebrow"><span class="sec-num">01</span> What</div>
+        <h2>What is a Drifting Model?</h2>
+        <p>A single-pass neural generator that maps noise to data in one forward pass. The defining move isn't the architecture — it's where the iteration lives. Diffusion and flow matching iterate at inference; Drifting Models iterate at training.</p>
+
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>Same problem, different axis</h4>
+            <p>Generative modeling = find f such that the pushforward f#pprior ≈ pdata. Diffusion factors f into many small per-step transformations applied at inference. A Drifting Model keeps f single-pass and lets the training iterations themselves evolve the pushforward distribution.</p>
+          </div>
+          <div class="callout">
+            <h4>A field that becomes zero at equilibrium</h4>
+            <p>A "drifting field" Vp,q(x) tells each generated sample which direction to move. It is built to be anti-symmetric — Vp,q = −Vq,p — which forces V = 0 whenever q = p. That zero is the training fixed-point.</p>
+          </div>
+          <div class="callout">
+            <h4>One-NFE generation at SOTA quality</h4>
+            <p>On ImageNet 256² (latent space, SD-VAE), a Drifting Model-L/2 hits FID 1.54 in one network evaluation. Best previous one-step result: iMeanFlow-XL/2 at 1.72. Multi-step DiT-XL/2 at 500 NFE: 2.27.</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">1.54</span><span class="label">1-NFE FID · ImageNet 256² latent · SOTA</span></div>
+          <div class="stat"><span class="num">1.61</span><span class="label">1-NFE FID · pixel space</span></div>
+          <div class="stat"><span class="num">1</span><span class="label">Function evaluation at inference</span></div>
+          <div class="stat"><span class="num">133M / 463M</span><span class="label">B/2 (FID 1.75) · L/2 (FID 1.54)</span></div>
+          <div class="stat"><span class="num">no SDE/ODE</span><span class="label">No diffusion/flow trajectories at training</span></div>
+          <div class="stat"><span class="num">no GAN</span><span class="label">No adversary, no distillation</span></div>
+        </div>
+
+        <h3>Where it sits among the families</h3>
+        <p>Drifting Models are a new branch on a familiar tree. The cleanest way to see the contribution is to lay it next to its neighbours:</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Family</th><th>Iteration lives at…</th><th>Inference cost</th><th>Optimization</th><th>Adversary?</th><th>Trained from scratch?</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Diffusion / Flow Matching</td><td>inference (SDE/ODE)</td><td>many NFEs (50–500+)</td><td>regression on trajectories</td><td>no</td><td>yes</td></tr>
+              <tr><td>Distilled 1-step diffusion</td><td>inference→collapsed</td><td>1 NFE</td><td>distillation from a teacher</td><td>no</td><td>no (needs a teacher)</td></tr>
+              <tr><td>Consistency / Shortcut / MeanFlow</td><td>inference→collapsed</td><td>1 NFE</td><td>imposes SDE/ODE-consistent regression</td><td>no</td><td>yes</td></tr>
+              <tr><td>GANs</td><td>inference (one-shot)</td><td>1 NFE</td><td>min-max with a discriminator</td><td>yes</td><td>yes</td></tr>
+              <tr><td>VAEs / Normalizing Flows</td><td>inference (one-shot)</td><td>1 NFE</td><td>ELBO / log-likelihood</td><td>no</td><td>yes</td></tr>
+              <tr><td>Drifting Models (this paper)</td><td>training</td><td>1 NFE</td><td>regress toward a drifted target</td><td>no</td><td>yes</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The defining cell is the second column. Drifting Models neither distill a teacher nor approximate an SDE/ODE — they treat the SGD trajectory itself as the iterative procedure that pushes q toward p.</p>
+
+        <div class="sec-eyebrow"><span class="sec-num">02</span> How</div>
+        <h2>How does it work?</h2>
+        <p>Three ideas, in order: training-time pushforward, drifting field with an anti-symmetry constraint, and a stop-gradient regression loss that quietly minimises the square of that field. Then a couple of practical levers — feature-space drifting and CFG — that make it work on real images.</p>
+
+        <h3>2.1 · Training-time pushforward</h3>
+        <p>Pick a generator fθ: ℝC → ℝD. Feed it noise ε ∼ pε. Its output distribution is q = f#pε. SGD turns θ into a sequence θ1, θ2, …, and therefore q into a sequence q1, q2, …. Each parameter update implicitly drifts every generated sample by</p>
+        <div class="formula"><span class="formula-label">Implicit drift induced by a parameter update</span>Δxi  =  fi+1(ε)  −  fi(ε)</div>
+        <p>The training procedure is the iterative pushforward. Drifting Models design that procedure so its fixed point is q = pdata.</p>
+
+        <h3>2.2 · The drifting field, and why it must be anti-symmetric</h3>
+        <p>Introduce an explicit field Vp,q(x): ℝd → ℝd that tells each sample how to move:</p>
+        <div class="formula"><span class="formula-label">Desired update rule on samples</span>xi+1  =  xi  +  Vp, qi(xi)</div>
+        <p>The field depends on the data distribution p and the current pushforward q. We want V = 0 when q = p — that's equilibrium. The paper enforces this via anti-symmetry:</p>
+        <div class="formula"><span class="formula-label">Proposition 3.1 · anti-symmetry implies zero-drift at equilibrium</span>Vp,q(x)  =  −Vq,p(x)   ⇒   q = p ⇒ Vp,q(x) = 0</div>
+        <p>Two-line proof: when q = p, the subscripts collapse and Vp,p = −Vp,p, so Vp,p = 0. The converse — that V ≈ 0 implies q ≈ p — is not automatic, but the paper gives sufficient conditions for the specific kernelized construction below (Appendix C.1).</p>
+        <p>The ablation in Table 1 is brutal: every variant of V that breaks anti-symmetry fails catastrophically. The property is doing real work.</p>
+
+        <h3>2.3 · A concrete V: kernelized attraction + repulsion</h3>
+        <p>Drifting Models instantiate V as a mean-shift-style combination of an attractive field toward data samples and a repulsive field away from generated samples:</p>
+        <div class="formula"><span class="formula-label">Attraction toward positives · repulsion from negatives</span>V+p(x) = 1/Zp · 𝔼y⁺ ∼ p [ k(x, y⁺) · (y⁺ − x) ]
+V−q(x) = 1/Zq · 𝔼y⁻ ∼ q [ k(x, y⁻) · (y⁻ − x) ]
+
+Vp,q(x)  :=  V+p(x)  −  V−q(x)</div>
+        <p>Reading that algebraically: the sample gets pulled toward the weighted mean of nearby data points and pushed away from the weighted mean of nearby generated peers. k is a similarity kernel — they pick k(x, y) = exp(−‖x − y‖ / τ), normalised with a softmax over y (so it looks just like InfoNCE in contrastive learning). The form is manifestly anti-symmetric.</p>
+
+        <h3>2.4 · The training loss · a stop-gradient regression that minimises ‖V‖²</h3>
+        <p>At equilibrium, the generator should satisfy the fixed-point f(ε) = f(ε) + V(f(ε)). Turn that into a loss by stopping the gradient on the target:</p>
+        <div class="formula"><span class="formula-label">Eq. 6 · drift-as-target regression with frozen target</span>ℒ  =  𝔼ε [ ‖ fθ(ε)  −  stopgrad( fθ(ε) + Vp, qθ(fθ(ε)) ) ‖² ]</div>
+        <p>That loss numerically equals 𝔼[‖V(f(ε))‖²], but you don't have to back-propagate through V (which depends on the entire distribution q). Instead, you regress the network's current output toward its drifted version, treating that target as a frozen tutor. The same trick appears in SimSiam and consistency-model training, but here it's load-bearing for a brand-new training paradigm.</p>
+
+        <h3>2.5 · The whole training step in 6 lines</h3>
+        <p>Algorithm 1 from the paper, with the simplest reading: in a batch, the same generated samples serve as the negatives, and a parallel batch of real data provides positives.</p>
+        <pre><code># Inputs:
+#   f_theta     - the generator (DiT-style single-pass network)
+#   y_pos       - batch of real data samples drawn from p_data
+
+e        = randn([N, C])                       # noise batch
+x        = f_theta(e)                          # pushforward to q
+y_neg    = x                                   # reuse as negatives (free)
+
+V        = compute_V(x, y_pos, y_neg)          # Eq. 11, kernel + softmax
+x_target = stopgrad(x + V)                     # frozen drifted target
+
+loss     = mse_loss(x, x_target)               # Eq. 6 — drift-as-target regression</code></pre>
+        <p>That's it. There is no SDE, no ODE solver, no diffusion-time variable, no consistency-along-trajectory constraint, no discriminator network. The only ingredients are a kernel, an anti-symmetric drift, and a stop-gradient regression.</p>
+
+        <h3>2.6 · Two practical levers</h3>
+        <h4>Drifting in feature space (not pixels)</h4>
+        <p>The kernel needs to measure semantic similarity. Doing it in pixel space is too noisy. The paper computes the drifting loss in the feature space of a pretrained self-supervised encoder (MoCo, SimCLR, or a custom latent-MAE that operates directly on the SD-VAE latents — best performer). Multi-scale ResNet features make the gradients richer. Pretrained features are training-time only — no extra inference cost. Without a feature encoder, the method does not work on ImageNet — kernels in raw pixel/latent space are too "flat" to provide signal. This is the most important practical caveat.</p>
+        <h4>Training-time CFG that preserves 1-NFE</h4>
+        <p>Classifier-Free Guidance is reformulated as a mixture in the negative-sample distribution: take some negatives from generated samples (the usual q) and some from unconditional real data. Solving the equilibrium yields qθ(·|c) ≈ α pdata(·|c) − (α−1) pdata(·|∅) — exactly the CFG formula, but realised through a training-time data choice. The CFG scale α is conditioned into the network like a class token and varied freely at inference. The 1-NFE property survives.</p>
+
+        <h3>2.7 · Inference is one forward pass</h3>
+        <figure class="diagram"><svg viewBox="0 0 760 354" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahdrift" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aadrift" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs><rect x="160.0" y="12" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="39.0" text-anchor="middle" class="d-title">Noise batch</text><text x="380.0" y="57.0" text-anchor="middle" class="d-sub">ε ~ N(0, I)</text><rect x="160.0" y="102" width="440" height="60" rx="8" class="d-box-accent"/><text x="380.0" y="129.0" text-anchor="middle" class="d-title">Single-pass generator</text><text x="380.0" y="147.0" text-anchor="middle" class="d-sub">f_θ · DiT-like  (133M / 463M)</text><text x="612.0" y="136.0" text-anchor="start" class="d-eyebrow">class c · CFG α</text><rect x="160.0" y="192" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="219.0" text-anchor="middle" class="d-title">Sample</text><text x="380.0" y="237.0" text-anchor="middle" class="d-sub">x ~ q_θ(·|c)</text><rect x="160.0" y="282" width="440" height="60" rx="8" class="d-box-2"/><text x="380.0" y="309.0" text-anchor="middle" class="d-title">SD-VAE decode</text><text x="380.0" y="327.0" text-anchor="middle" class="d-sub">latent variant only</text><line x1="380.0" y1="72" x2="380.0" y2="101" class="d-edge-accent" marker-end="url(#aadrift)"/><line x1="380.0" y1="162" x2="380.0" y2="191" class="d-edge" marker-end="url(#ahdrift)"/><line x1="380.0" y1="252" x2="380.0" y2="281" class="d-edge" marker-end="url(#ahdrift)"/></svg><figcaption><b>Drifting Models sample in one forward pass</b> — no iterative denoising at inference. The DiT-style generator f_θ is conditioned on the class label and CFG scale (via adaLN-zero); latents are decoded by SD-VAE.</figcaption></figure>
+        <p>No iterative solver. No noise schedule. No second pass for CFG. The generator does what a generator was supposed to do.</p>
+
+        <div class="sec-eyebrow"><span class="sec-num">03</span> Why</div>
+        <h2>Why does it matter?</h2>
+        <p>A clean conceptual contribution that also happens to win the benchmark. Three reasons to care.</p>
+
+        <h3>3.1 · It moves the iteration to the right place</h3>
+        <div class="callout accent">
+          <h4>The core conceptual claim</h4>
+          <p>For a decade, the cheapest available approximation to "match the data distribution" was: define a complex map, factor it into easy local steps, and walk those steps at inference. Drifting Models point out that the cheapest local steps you can actually take are the SGD steps you're already taking anyway. There is no second source of iteration needed. The training trajectory is the pushforward path. Once that's said out loud, several pieces fall away: no ODE/SDE formulation, no noise schedule, no consistency loss, no teacher, no discriminator.</p>
+        </div>
+
+        <h3>3.2 · It actually wins ImageNet 256²</h3>
+        <h4>Among single-step methods</h4>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Method · 1-NFE</th><th>Params (gen + dec)</th><th>FID↓</th><th>IS↑</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>iCT-XL/2 (Song &amp; Dhariwal '23)</td><td>675M + 49M</td><td>34.24</td><td>—</td></tr>
+              <tr><td>Shortcut-XL/2 (Frans et al '24)</td><td>675M + 49M</td><td>10.60</td><td>—</td></tr>
+              <tr><td>MeanFlow-XL/2 (Geng et al '25a)</td><td>676M + 49M</td><td>3.43</td><td>—</td></tr>
+              <tr><td>AdvFlow-XL/2 (Lin et al '25)</td><td>673M + 49M</td><td>2.38</td><td>284.2</td></tr>
+              <tr><td>iMeanFlow-XL/2 (Geng et al '25b)</td><td>610M + 49M</td><td>1.72</td><td>282.0</td></tr>
+              <tr><td>Drifting Model B/2</td><td>133M + 49M</td><td>1.75</td><td>263.2</td></tr>
+              <tr><td>Drifting Model L/2</td><td>463M + 49M</td><td>1.54</td><td>258.9</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The B/2 variant — at 133M parameters — already matches iMeanFlow-XL/2 (610M) one-step. The L/2 variant beats it outright.</p>
+
+        <h4>Against multi-step diffusion (250–500 NFE)</h4>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Method</th><th>NFE</th><th>FID↓</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>DiT-XL/2 (Peebles &amp; Xie '23)</td><td>500</td><td>2.27</td></tr>
+              <tr><td>SiT-XL/2 (Ma et al '24)</td><td>500</td><td>2.06</td></tr>
+              <tr><td>SiT-XL/2 + REPA</td><td>500</td><td>1.42</td></tr>
+              <tr><td>LightningDiT-XL/2 (VA-VAE)</td><td>500</td><td>1.35</td></tr>
+              <tr><td>RAE + DiT-XL/2</td><td>100</td><td>1.13</td></tr>
+              <tr><td>Drifting Model L/2 (one shot)</td><td>1</td><td>1.54</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The Drifting Model with one forward pass is closer to the best multi-step methods than the best multi-step methods are to each other. It's not yet at LightningDiT or RAE+DiT, but those use 100-500 evaluations. The Pareto frontier for image generation just moved.</p>
+
+        <h3>3.3 · The lessons buried in the ablations</h3>
+        <h4>Anti-symmetry is everything</h4>
+        <p>Table 1: every destructive variant that breaks the Vp,q = −Vq,p structure fails catastrophically. It's not a regulariser — it's the architecture of the equilibrium.</p>
+        <h4>More positives and more negatives both help</h4>
+        <p>Table 2: under fixed compute, raising Npos from 1 to 64 cuts FID from 20.4 → 8.5. Raising Nneg alongside helps further. Same intuition as contrastive learning — larger sample sets make the field estimate sharper.</p>
+        <h4>Feature encoder quality dominates</h4>
+        <p>Table 3: MoCo and SimCLR work. A custom latent-MAE works better. Wider latent-MAE + longer pre-training + classifier-finetuned latent-MAE keep dropping FID. Without any feature encoder, the method doesn't converge on ImageNet. This is the most important practical caveat — pick the encoder carefully.</p>
+        <h4>Robustness to mode collapse · a bonus property</h4>
+        <p>The 2D toy experiments show that even when q is initialised collapsed on a single mode of a bimodal p, training recovers both modes. Intuition: a collapsed q is far from un-attracted data modes, so attraction toward those modes dominates and pulls samples out. This is structurally different from GANs, where mode collapse is the classical failure mode and a constant source of pain.</p>
+        <div class="chip-row">
+          <span class="chip">Collapsed init · recovers</span>
+          <span class="chip">Between-modes init · recovers</span>
+          <span class="chip">Far-from-data init · recovers</span>
+        </div>
+
+        <h3>3.4 · Honest limits</h3>
+        <h4>What it nails</h4>
+        <ul>
+          <li>One-NFE at SOTA quality — no distillation from a teacher, no adversarial training.</li>
+          <li>Parameter-efficient — B/2 (133M) matches XL/2 baselines (~675M).</li>
+          <li>No SDE/ODE machinery — conceptually decoupled from diffusion entirely.</li>
+          <li>Robust to mode collapse by construction of the attraction–repulsion field.</li>
+          <li>CFG slots in naturally as a training-time mixing of the negative distribution, with the 1-NFE property preserved.</li>
+          <li>Plain SGD — no min-max optimisation, no two-network warm-up dance.</li>
+        </ul>
+        <h4>Where it bends</h4>
+        <ul>
+          <li>Requires a strong feature encoder. Without an SSL feature space, kernels are too flat on ImageNet and training does not converge. Choice of k, τ, and φ is load-bearing.</li>
+          <li>Quadratic-in-batch cost. Pairwise kernels over positives × negatives × samples scale with batch. The paper uses batch ≈ 4096 to estimate V well — not a problem for ImageNet research clusters, but worth knowing.</li>
+          <li>No exact-likelihood interpretation. Unlike normalizing flows / VAEs, there's no ELBO or change-of-variable density to report. Loss equals ‖V‖², not log p(x).</li>
+          <li>Empirical convergence story, not provable. Anti-symmetry guarantees q = p ⇒ V = 0; the reverse implication relies on identifiability conditions discussed in Appendix C.1, not a clean theorem.</li>
+          <li>Single domain so far. Demonstrated only on class-conditional ImageNet 256² (latent and pixel). Open: text-to-image, video, audio.</li>
+        </ul>
+
+        <h3>3.5 · Where this could go</h3>
+        <p>Three speculations on what this paper enables:</p>
+        <p><strong>Real-time generative video.</strong> Multi-step diffusion is the bottleneck for live applications. A 1-NFE generator at sub-second per frame, with this quality, removes that bottleneck — provided the feature-encoder requirement can be met for the temporal domain.</p>
+        <p><strong>An alternative to GANs without the pathology.</strong> Drifting Models share the "single-pass generator + non-adversarial loss" property with GANs but optimise something convex-ish (a regression to a frozen target) instead of a saddle-point objective. If the formulation scales, this could be the GAN replacement that GANs themselves never became.</p>
+        <p><strong>A unifying lens.</strong> Many recent few-step methods (Consistency, MeanFlow, AdvFlow) can be re-read through the drifting-field lens: each defines an implicit "target the model is regressing toward" each step. Drifting Models simply make that target explicit and as principled as possible.</p>
+        <p>The thing I'd want to see next: replace ImageNet with COCO-style text-to-image. The conditioning machinery already supports arbitrary signals via adaLN-zero — CFG slots in cleanly. If the feature encoder generalises to natural-image distributions (CLIP, DINOv2), this paradigm could be a serious one-step competitor to SD3 / FLUX-class diffusion models.</p>
+      </div>
+
+      <nav class="post-nav">
+        <a href="../blog.html">← All writing</a>
+        <a href="./leworldmodel.html">LeWorldModel →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

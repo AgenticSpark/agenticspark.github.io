@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DeepSpeed · ZeRO training at scale — Ethan</title>
+  <meta name="description" content="A technical STAR analysis of DeepSpeed: ZeRO, offload, 3D parallelism, fused kernels, inference, RLHF, and the operational cost of training huge models." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/deepspeed.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="DeepSpeed · ZeRO training at scale" />
+  <meta property="og:description" content="DeepSpeed through the STAR lens: ZeRO, CPU/NVMe offload, 3D parallelism, custom kernels, inference, and the complexity tax." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/deepspeed.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="DeepSpeed · ZeRO training at scale" />
+  <meta name="twitter:description" content="ZeRO, offload, 3D parallelism, and the practical trade-offs behind DeepSpeed training at scale." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">Large-scale training · STAR analysis</span>
+        <h1 class="post-title">DeepSpeed</h1>
+        <p class="post-dek">The deep-learning systems library that made model-state sharding feel like a product feature instead of a research prototype. Its center of gravity is <em>ZeRO</em>: progressively partition optimizer states, gradients, and parameters across data-parallel ranks so each GPU stops carrying a full copy of training state. Around that core sits CPU/NVMe offload, 3D parallelism, fused kernels, MoE, inference, and RLHF tooling. The memory story is real; the configuration surface is also real.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Repo</dt><dd><a href="https://github.com/deepspeedai/DeepSpeed" target="_blank" rel="noopener">deepspeedai/<wbr>DeepSpeed</a></dd></div>
+        <div><dt>License</dt><dd>Apache-2.0</dd></div>
+        <div><dt>Stack</dt><dd>Python · C++/CUDA · PyTorch</dd></div>
+        <div><dt>Version</dt><dd>v0.19.2 · PyPI</dd></div>
+        <div><dt>Stars</dt><dd>~42.6K · 4.9K forks</dd></div>
+        <div><dt>Reviewed</dt><dd>Jun 2026</dd></div>
+      </dl>
+
+      <div class="prose">
+        <h2>In short</h2>
+        <p>DeepSpeed is the library you reach for when the model, batch, optimizer state, or context length no longer fits inside the comforting fiction of one replicated GPU.</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>What it is</h4>
+            <p>An Apache-2.0 optimization library for distributed training and inference of large deep-learning models. It wraps PyTorch training with <code>deepspeed.initialize()</code>, a <code>ds_config</code> JSON file, custom C++/CUDA ops, a <code>deepspeed</code> launcher, and integrations used by Hugging Face Transformers, Accelerate, Megatron-LM, Lightning, and other training stacks. The repository is mostly Python with a large native kernel layer in C++ and CUDA.</p>
+          </div>
+          <div class="callout">
+            <h4>Why it's interesting</h4>
+            <p>The core idea is not "use more GPUs." It is: stop duplicating the model's training state on every data-parallel rank. ZeRO stage 1 shards optimizer states; stage 2 also shards gradients; stage 3 also shards parameters. ZeRO-Offload moves optimizer work to CPU; ZeRO-Infinity extends stage 3 to CPU and NVMe. That changed the practical ceiling for billion- and trillion-parameter training.</p>
+          </div>
+          <div class="callout">
+            <h4>Biggest concerns</h4>
+            <p>The cost is control-plane complexity. A serious config is a dense JSON object with memory buckets, communication overlap, optimizer choices, precision flags, gradient accumulation, offload devices, checkpoint behavior, and framework-specific <code>auto</code> values. Native PyTorch FSDP has narrowed the gap for many teams, offload buys capacity by spending bandwidth, and distributed failures still arrive as rank-local stack traces at 3 a.m.</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">3</span><span class="label">ZeRO stages: optimizer, gradients, parameters</span></div>
+          <div class="stat"><span class="num">CPU/NVMe</span><span class="label">Offload tiers for memory capacity</span></div>
+          <div class="stat"><span class="num">~42.6K</span><span class="label">Stars · 4.9K forks</span></div>
+          <div class="stat"><span class="num">10B</span><span class="label">ZeRO-Offload tutorial: single V100 claim</span></div>
+          <div class="stat"><span class="num">1T+</span><span class="label">Trillion-scale claims, workload-dependent</span></div>
+        </div>
+
+        <div class="callout accent">
+          <h4>Verdict</h4>
+          <p>DeepSpeed remains one of the most important open-source systems projects in large-model training because ZeRO attacked the right waste: replicated state. Use it when memory pressure is the primary blocker, when you need mature ZeRO/offload paths, or when a framework integration already expects it. But do not confuse a config recipe with a systems guarantee. Pin PyTorch and DeepSpeed versions, validate kernels on your hardware, measure communication overlap, and expect CPU/NVMe offload to trade speed for capacity rather than magically create bandwidth.</p>
+        </div>
+
+        <h2>First — one config, one launch</h2>
+        <p>Almost everything DeepSpeed does is driven by a JSON config and three lines of Python; the config is where you'll spend your time, so start there. A minimal ZeRO-2, mixed-precision setup:</p>
+        <pre><code>// ds_config.json
+{
+  "train_micro_batch_size_per_gpu": 8,
+  "gradient_accumulation_steps": 4,
+  "bf16": { "enabled": true },
+  "zero_optimization": {
+    "stage": 2,
+    "overlap_comm": true,
+    "contiguous_gradients": true
+  }
+}</code></pre>
+        <p>The training loop barely changes from ordinary PyTorch — you hand the model, parameters, and config to <code>deepspeed.initialize()</code> and call <code>backward</code> / <code>step</code> on the engine it returns:</p>
+        <pre><code>import deepspeed
+
+engine, optimizer, _, _ = deepspeed.initialize(
+    model=model, model_parameters=model.parameters(), config="ds_config.json")
+
+for batch in loader:
+    loss = engine(batch)        # forward
+    engine.backward(loss)       # ZeRO partitions gradients here
+    engine.step()               # each rank updates only its optimizer shard</code></pre>
+        <pre><code>$ deepspeed --num_gpus 8 train.py        # one process per GPU
+[INFO] ZeRO stage 2 enabled · overlap_comm=True
+[INFO] estimated per-GPU memory: 16.6 GB  (vs 120 GB replicated)</code></pre>
+        <p>That last line is the entire pitch: same model, same code, a fraction of each GPU's memory, because the redundant state was partitioned instead of copied. The rest of this piece is how that number is produced — and what it costs.</p>
+
+        <h2>1 · Situation — model state outgrew replicated data parallelism</h2>
+        <p>Classic data parallel training is conceptually clean: every GPU owns a full copy of the model, processes different data, all-reduces gradients, and applies the same optimizer step. It scales compute nicely until the model and optimizer state stop fitting.</p>
+        <p>The painful part is that parameters are not the whole memory bill. Adam keeps first and second moment estimates, often in FP32. Mixed-precision training keeps FP16/BF16 model weights plus FP32 master weights. Gradients, activations, temporary buffers, communication buckets, and fragmentation add their own tax. For transformer training, optimizer states alone can dominate the per-GPU footprint before activations even enter the conversation.</p>
+        <p>Model parallelism existed, but it asked users to rewrite models around tensor or pipeline partitions. That was powerful and intrusive. The question DeepSpeed answered was narrower and higher leverage: how far can data-parallel training go if the redundant state is partitioned instead of replicated?</p>
+
+        <h2>2 · Task — make giant training runs fit without making every model custom</h2>
+        <p>The task was to reduce per-GPU memory while preserving enough of the PyTorch mental model that teams could adopt it inside existing training code.</p>
+        <p>DeepSpeed's interface reflects that goal. Training code calls <code>deepspeed.initialize()</code>; the launch path uses <code>deepspeed --num_gpus ...</code>; the behavior is driven by a JSON config. The library then owns optimizer wrapping, gradient partitioning, parameter gathering, communication scheduling, mixed precision, checkpoint format, and optional offload. The user still writes a PyTorch model, but the runtime now controls when full tensors exist on each rank.</p>
+        <ol>
+          <li><strong>Cut memory redundancy</strong> across data-parallel ranks without changing the model definition for common cases.</li>
+          <li><strong>Compose with other parallelism</strong> — tensor, pipeline, data, and expert parallelism — when sharding alone is insufficient.</li>
+          <li><strong>Hide bandwidth costs</strong> behind overlap, fused kernels, contiguous gradients, and bucketed collectives where possible.</li>
+        </ol>
+
+        <h2>3 · Action — what's actually in the engine</h2>
+        <p>Six lenses: ZeRO stages, offload, 3D parallelism, kernel/precision mechanics, inference, and the RLHF branch of the project.</p>
+
+        <h3>3.1 ZeRO stages 1/2/3 — partition the state, not the idea of the model</h3>
+        <p>ZeRO is incremental by design. Stage 1 partitions optimizer states across ranks, so each process updates only its shard. Stage 2 also partitions reduced gradients, matching gradients to the optimizer-state shard that needs them. Stage 3 partitions the model parameters themselves, gathering parameters for forward/backward use and releasing them back to shards afterward. Hugging Face's current docs summarize the same progression and warn that each additional stage reduces memory at the cost of more communication.</p>
+        <figure class="diagram"><svg viewBox="0 0 760 560" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahds" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aads" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="40" y="34" width="160" height="58" rx="8" class="d-box"/><text x="120" y="58" text-anchor="middle" class="d-title">Rank 0</text><text x="120" y="78" text-anchor="middle" class="d-sub">GPU shard owner</text>
+        <rect x="300" y="34" width="160" height="58" rx="8" class="d-box"/><text x="380" y="58" text-anchor="middle" class="d-title">Rank 1</text><text x="380" y="78" text-anchor="middle" class="d-sub">GPU shard owner</text>
+        <rect x="560" y="34" width="160" height="58" rx="8" class="d-box"/><text x="640" y="58" text-anchor="middle" class="d-title">Rank 2</text><text x="640" y="78" text-anchor="middle" class="d-sub">GPU shard owner</text>
+        <line x1="200" y1="63" x2="300" y2="63" class="d-edge" marker-end="url(#ahds)"/><line x1="460" y1="63" x2="560" y2="63" class="d-edge" marker-end="url(#ahds)"/>
+        <rect x="72" y="140" width="96" height="46" rx="6" class="d-box-accent"/><text x="120" y="168" text-anchor="middle" class="d-title">Opt 0</text>
+        <rect x="332" y="140" width="96" height="46" rx="6" class="d-box-accent"/><text x="380" y="168" text-anchor="middle" class="d-title">Opt 1</text>
+        <rect x="592" y="140" width="96" height="46" rx="6" class="d-box-accent"/><text x="640" y="168" text-anchor="middle" class="d-title">Opt 2</text>
+        <text x="380" y="122" text-anchor="middle" class="d-elabel">ZeRO-1: optimizer states sharded</text>
+        <rect x="72" y="224" width="96" height="46" rx="6" class="d-box"/><text x="120" y="252" text-anchor="middle" class="d-title">Grad 0</text>
+        <rect x="332" y="224" width="96" height="46" rx="6" class="d-box"/><text x="380" y="252" text-anchor="middle" class="d-title">Grad 1</text>
+        <rect x="592" y="224" width="96" height="46" rx="6" class="d-box"/><text x="640" y="252" text-anchor="middle" class="d-title">Grad 2</text>
+        <text x="380" y="206" text-anchor="middle" class="d-elabel">ZeRO-2: gradients sharded too</text>
+        <rect x="72" y="308" width="96" height="46" rx="6" class="d-box-accent"/><text x="120" y="336" text-anchor="middle" class="d-title">Param 0</text>
+        <rect x="332" y="308" width="96" height="46" rx="6" class="d-box-accent"/><text x="380" y="336" text-anchor="middle" class="d-title">Param 1</text>
+        <rect x="592" y="308" width="96" height="46" rx="6" class="d-box-accent"/><text x="640" y="336" text-anchor="middle" class="d-title">Param 2</text>
+        <text x="380" y="290" text-anchor="middle" class="d-elabel">ZeRO-3: parameters sharded and gathered on demand</text>
+        <path d="M120 354 C120 410 260 410 318 354" fill="none" class="d-edge-accent" marker-end="url(#aads)"/><path d="M640 354 C640 410 500 410 442 354" fill="none" class="d-edge-accent" marker-end="url(#aads)"/>
+        <rect x="230" y="410" width="300" height="54" rx="8" class="d-box"/><text x="380" y="433" text-anchor="middle" class="d-title">All-gather for layer execution</text><text x="380" y="452" text-anchor="middle" class="d-sub">then release back to shards</text>
+        <line x1="380" y1="464" x2="380" y2="491" class="d-edge" marker-end="url(#ahds)"/>
+        <rect x="170" y="492" width="420" height="44" rx="8" class="d-box-accent"/><text x="380" y="519" text-anchor="middle" class="d-title">Optional offload: GPU ⇄ CPU RAM ⇄ NVMe</text>
+        </svg><figcaption><b>ZeRO removes redundancy one state class at a time.</b> Stage 1 shards optimizer states, stage 2 adds gradients, stage 3 shards parameters and all-gathers only what a layer needs. Offload moves selected shards through slower but larger memory tiers.</figcaption></figure>
+        <p>The resulting memory curve is why ZeRO became the project's brand. It keeps data parallelism's clean programming model longer than replicated training can, then composes with model parallelism when the model is beyond even ZeRO-3's comfort zone.</p>
+        <p>The arithmetic behind that brand is worth doing once. Mixed-precision Adam stores, per parameter: 2 bytes of FP16 weights, 2 bytes of FP16 gradients, and 12 bytes of FP32 optimizer state (master weight + momentum + variance) — 16 bytes in all. For a 7.5B-parameter model that is 120 GB <em>per GPU</em> if every rank holds a full copy. ZeRO divides the shardable parts by the data-parallel degree N; on 64 GPUs the curve looks like this:</p>
+        <figure class="diagram"><svg viewBox="0 0 760 320" role="img" xmlns="http://www.w3.org/2000/svg">
+        <text x="40" y="40" class="d-sub">per-GPU memory · 7.5B model · 64 data-parallel GPUs</text>
+        <line x1="80" y1="270" x2="720" y2="270" class="d-edge"/>
+        <rect x="110" y="66"  width="90" height="204" rx="4" class="d-box-2"/><text x="155" y="58"  text-anchor="middle" class="d-title">120 GB</text><text x="155" y="290" text-anchor="middle" class="d-sub">no ZeRO</text>
+        <rect x="270" y="217" width="90" height="53"  rx="4" class="d-box-2"/><text x="315" y="209" text-anchor="middle" class="d-title">31.4 GB</text><text x="315" y="290" text-anchor="middle" class="d-sub">ZeRO-1</text>
+        <rect x="430" y="242" width="90" height="28"  rx="4" class="d-box-2"/><text x="475" y="234" text-anchor="middle" class="d-title">16.6 GB</text><text x="475" y="290" text-anchor="middle" class="d-sub">ZeRO-2</text>
+        <rect x="590" y="259" width="90" height="11"  rx="4" class="d-box-accent"/><text x="635" y="251" text-anchor="middle" class="d-title">1.9 GB</text><text x="635" y="290" text-anchor="middle" class="d-sub">ZeRO-3</text>
+        </svg><figcaption><b>Why ZeRO became the brand.</b> Partitioning optimizer state (stage 1), then gradients (stage 2), then parameters (stage 3) drops the per-GPU footprint from 120 GB of replicated state toward <code>16·Ψ/N</code> — about 1.9 GB here. The figures follow the original ZeRO paper's 7.5B / 64-GPU example: the saving is real, the added all-gather traffic is the price.</figcaption></figure>
+        <p>The pattern is the point: ZeRO-1 shards the 12-byte optimizer state, ZeRO-2 adds the 2-byte gradients, ZeRO-3 adds the 2-byte parameters, so the per-GPU bill falls toward <code>16·Ψ / N</code>. What it trades for is communication — ZeRO-3 must all-gather each layer's parameters just in time for its forward and backward pass, then release them again.</p>
+
+        <h3>3.2 ZeRO-Offload &amp; Infinity — capacity by spending bandwidth</h3>
+        <p>ZeRO-Offload moves optimizer memory and compute from GPU to host CPU, using DeepSpeedCPUAdam to keep CPU optimizer work from becoming completely dominant. The official tutorial frames a 10B GPT-2 run on a single 32GB V100 as the motivating example. That is a capacity story, not a free-speed story: CPU memory is larger, PCIe/NVLink transfer is slower than HBM, and host-core binding can matter.</p>
+        <p>ZeRO-Infinity extends the idea under ZeRO-3: parameters and optimizer states can live across GPU, CPU, and NVMe, with prefetching and release behavior designed to keep the active working set small. It is the right kind of engineering for models beyond GPU memory, but the honest caveat is simple. NVMe is not HBM. If the run is bandwidth-bound, offload saves the run by slowing it down less than the alternative — which is not running.</p>
+        <pre><code>// add to zero_optimization for ZeRO-Infinity: optimizer to CPU, params to NVMe
+"offload_optimizer": { "device": "cpu",  "pin_memory": true },
+"offload_param":     { "device": "nvme", "nvme_path": "/local_nvme" }</code></pre>
+        <p>With that block a model far larger than aggregate HBM can train on the same GPUs — the working set is streamed in and out across the tiers. Watch the trade in <code>nvidia-smi</code>: GPU utilization sags whenever a step is waiting on PCIe or NVMe instead of HBM. Offload buys capacity with latency, nothing more.</p>
+
+        <h3>3.3 3D parallelism — data + tensor + pipeline</h3>
+        <p>DeepSpeed's pipeline tutorial describes hybrid data and pipeline parallelism and explicitly points to 3D parallelism with Megatron-LM-style model parallelism. Data parallelism replicates training across batches, tensor parallelism shards individual matrix operations, and pipeline parallelism splits layers into stages. Gradient accumulation turns a batch into micro-batches so pipeline stages can overlap forward and backward work.</p>
+        <p>This is where DeepSpeed becomes a distributed-systems library rather than a memory trick. Placement, load balance, activation traffic, all-reduce timing, and interconnect topology decide whether the theoretical parallelism becomes throughput or bubbles.</p>
+        <figure class="diagram"><svg viewBox="0 0 760 360" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="aads2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <text x="187" y="56" text-anchor="middle" class="d-title">data-parallel replica 0</text>
+        <rect x="24" y="66" width="326" height="210" rx="8" class="d-group"/>
+        <text x="573" y="56" text-anchor="middle" class="d-title">data-parallel replica 1</text>
+        <rect x="410" y="66" width="326" height="210" rx="8" class="d-group"/>
+        <rect x="44"  y="96"  width="92" height="72" rx="6" class="d-box"/><text x="90"  y="138" text-anchor="middle" class="d-sub">P0·T0</text>
+        <rect x="146" y="96"  width="92" height="72" rx="6" class="d-box"/><text x="192" y="138" text-anchor="middle" class="d-sub">P1·T0</text>
+        <rect x="248" y="96"  width="92" height="72" rx="6" class="d-box"/><text x="294" y="138" text-anchor="middle" class="d-sub">P2·T0</text>
+        <rect x="44"  y="184" width="92" height="72" rx="6" class="d-box"/><text x="90"  y="226" text-anchor="middle" class="d-sub">P0·T1</text>
+        <rect x="146" y="184" width="92" height="72" rx="6" class="d-box"/><text x="192" y="226" text-anchor="middle" class="d-sub">P1·T1</text>
+        <rect x="248" y="184" width="92" height="72" rx="6" class="d-box"/><text x="294" y="226" text-anchor="middle" class="d-sub">P2·T1</text>
+        <rect x="430" y="96"  width="92" height="72" rx="6" class="d-box"/><text x="476" y="138" text-anchor="middle" class="d-sub">P0·T0</text>
+        <rect x="532" y="96"  width="92" height="72" rx="6" class="d-box"/><text x="578" y="138" text-anchor="middle" class="d-sub">P1·T0</text>
+        <rect x="634" y="96"  width="92" height="72" rx="6" class="d-box"/><text x="680" y="138" text-anchor="middle" class="d-sub">P2·T0</text>
+        <rect x="430" y="184" width="92" height="72" rx="6" class="d-box"/><text x="476" y="226" text-anchor="middle" class="d-sub">P0·T1</text>
+        <rect x="532" y="184" width="92" height="72" rx="6" class="d-box"/><text x="578" y="226" text-anchor="middle" class="d-sub">P1·T1</text>
+        <rect x="634" y="184" width="92" height="72" rx="6" class="d-box"/><text x="680" y="226" text-anchor="middle" class="d-sub">P2·T1</text>
+        <line x1="352" y1="150" x2="408" y2="150" class="d-edge-accent" marker-end="url(#aads2)"/>
+        <line x1="408" y1="172" x2="352" y2="172" class="d-edge-accent" marker-end="url(#aads2)"/>
+        <text x="380" y="134" text-anchor="middle" class="d-elabel">DP</text>
+        <text x="380" y="300" text-anchor="middle" class="d-sub">columns = pipeline stages (PP) · rows = tensor shards (TP)</text>
+        <text x="380" y="332" text-anchor="middle" class="d-elabel">12 GPUs = DP 2 x PP 3 x TP 2</text>
+        </svg><figcaption><b>3D parallelism.</b> Each GPU owns one tensor shard (row) of one pipeline stage (column); the whole 3×2 grid is a single model replica, and DeepSpeed runs several replicas data-parallel, all-reducing gradients between them. Sharding alone (ZeRO) handles memory; this grid is what you reach for when one model is too wide or too deep for a single replica.</figcaption></figure>
+
+        <h3>3.4 Fused kernels, mixed precision, and checkpointing — the unglamorous speed layer</h3>
+        <p>The repo's language mix and install docs make the native layer visible: Python on top, C++/CUDA/HIP extensions underneath. DeepSpeed ships fused optimizers and transformer kernels, JIT-buildable ops, CPUAdam, communication overlap, contiguous-gradient handling, FP16/BF16 paths, and activation checkpointing. These are not headline architecture ideas, but they decide whether ZeRO's memory savings translate into usable throughput.</p>
+        <p>Gradient checkpointing is the classic compute-for-memory trade: save fewer activations in forward, recompute them in backward. Gradient accumulation is the batch-size escape hatch: run micro-batches that fit, accumulate gradients, then step as if the batch were larger. DeepSpeed's value is that these knobs live beside ZeRO rather than as unrelated scripts.</p>
+        <pre><code># trade compute for memory: recompute activations in backward instead of storing them
+import deepspeed.runtime.activation_checkpointing.checkpointing as ds_ckpt
+out = ds_ckpt.checkpoint(transformer_block, hidden_states)   # activations not kept
+# pair with a larger gradient_accumulation_steps to reach the effective batch you want</code></pre>
+
+        <h3>3.5 DeepSpeed-Inference — useful, but not the center of gravity</h3>
+        <p>DeepSpeed-Inference supports tensor-parallel inference, kernel injection for compatible transformer layers, dtype selection, quantized paths, and checkpoint reshaping across model-parallel degrees. The docs now point users toward DeepSpeed-FastGen for the newest inference path, which is itself a useful signal: DeepSpeed has inference machinery, but its durable identity is training-scale memory optimization.</p>
+        <p>If the question is "serve an OpenAI-compatible endpoint for open weights," vLLM or TensorRT-LLM usually enters the conversation first in 2026. If the question is "I trained with DeepSpeed/Megatron/Hugging Face and want tensor-parallel inference from those checkpoints," DeepSpeed-Inference still makes architectural sense.</p>
+
+        <h3>3.6 DeepSpeed-Chat/RLHF — the post-training branch</h3>
+        <p>DeepSpeed-Chat packaged the RLHF workflow into supervised fine-tuning, reward-model training, and reinforcement-learning fine-tuning with DeepSpeed underneath. The important systems angle is not that RLHF is unique to DeepSpeed; it is that RLHF multiplies the number of models and states in motion. Policy, reference, reward, optimizer, rollouts, and distributed generation can quickly turn a fine-tuning script into a memory problem again.</p>
+        <p>That makes DeepSpeed's post-training tooling conceptually consistent with the rest of the project: large-model workflows are constrained by memory, communication, and orchestration, not just by the forward pass.</p>
+
+        <h2>4 · Result — what you get when you deploy it</h2>
+        <p>Each mechanism mapped to what it buys in practice.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Mechanism</th><th>What it buys you</th><th>Honest caveat</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>ZeRO-1</td><td>Optimizer-state sharding; big win for Adam-heavy memory</td><td>Parameters and gradients are still replicated</td></tr>
+              <tr><td>ZeRO-2</td><td>Shards gradients too; strong default for many fine-tunes</td><td>Less memory relief than ZeRO-3, but usually simpler</td></tr>
+              <tr><td>ZeRO-3</td><td>Shards parameters; largest GPU-memory reduction</td><td>More all-gather traffic and checkpoint complexity</td></tr>
+              <tr><td>CPU offload</td><td>Trains models that otherwise OOM on GPU memory</td><td>Trades HBM speed for host memory capacity</td></tr>
+              <tr><td>NVMe offload</td><td>Pushes beyond CPU/GPU resident model state</td><td>Storage bandwidth and prefetch tuning become critical</td></tr>
+              <tr><td>3D parallelism</td><td>Combines data, tensor, and pipeline scaling</td><td>Topology, bubbles, and load balance dominate</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The practical result is not a universal fastest path. It is a much larger feasible set. DeepSpeed turns "does not fit" into "fits if communication, offload, and checkpointing are tuned enough," which is often the difference between a research plan and a run that starts.</p>
+
+        <h2>5 · Takeaways — how to read DeepSpeed in 2026</h2>
+        <p>Five calibrated conclusions for an engineer choosing a training stack.</p>
+        <h4>What's genuinely strong</h4>
+        <ul>
+          <li><strong>ZeRO is still a foundational systems idea.</strong> Sharding redundant optimizer, gradient, and parameter state is now table-stakes; DeepSpeed made it practical early.</li>
+          <li><strong>The integration surface is broad.</strong> Hugging Face, Accelerate, Megatron-style training, Lightning, and other stacks know how to hand a config to DeepSpeed.</li>
+          <li><strong>Offload is mature enough to matter.</strong> CPU and NVMe tiers are not magic, but they let teams trade time for memory rather than abandon a run.</li>
+          <li><strong>The native ops layer is part of the product.</strong> Fused optimizers, CPUAdam, transformer kernels, and JIT extensions are where theory meets hardware.</li>
+        </ul>
+        <h4>What to budget for</h4>
+        <ul>
+          <li><strong>Configuration complexity.</strong> The <code>ds_config</code> file is not decoration; it is the distributed runtime contract.</li>
+          <li><strong>Version edges.</strong> Some features lag newest PyTorch or accelerator combinations. Pin versions, read compatibility notes, and run <code>ds_report</code>.</li>
+          <li><strong>Debugging distributed state.</strong> ZeRO-3 changes when parameters exist in full; checkpoint save/load and manual tensor access require care.</li>
+        </ul>
+        <h4>Use FSDP as the default challenger</h4>
+        <p>PyTorch FSDP narrowed DeepSpeed's edge for many mainstream workloads by bringing parameter sharding into native PyTorch. DeepSpeed still wins when its specific offload, MoE, 3D parallel, or integration path is the reason the run fits. For ordinary fine-tuning, FSDP deserves a benchmark before assuming DeepSpeed is mandatory.</p>
+        <h4>Offload is a capacity lever</h4>
+        <p>CPU and NVMe offload should be described honestly: it buys memory headroom by introducing slower memory tiers. The right metric is time-to-train for a model that otherwise cannot run, not tokens/sec compared with an all-HBM configuration.</p>
+        <h4>Treat recipes as starting points</h4>
+        <p>The official and Hugging Face configs are useful, especially the <code>auto</code> fields, but bucket sizes, overlap, accumulation, checkpoint settings, and offload pins are workload-dependent. Measure your model, not the blog post's model.</p>
+
+        <h2>6 · vs Alternatives</h2>
+        <p>Where DeepSpeed sits in the 2026 training landscape.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Option</th><th>What it is</th><th>Relative to DeepSpeed</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>PyTorch FSDP</td><td>Native PyTorch fully-sharded data parallel</td><td>Closest default rival; simpler stack for many teams, less DeepSpeed-specific offload breadth</td></tr>
+              <tr><td>Megatron-LM</td><td>Tensor/pipeline parallel training codebase</td><td>Lower-level model-parallel engine; often combined with DeepSpeed ZeRO</td></tr>
+              <tr><td>ColossalAI</td><td>Distributed training system with sharding and parallelism</td><td>Similar ambition; smaller ecosystem gravity than DeepSpeed/HF/PyTorch</td></tr>
+              <tr><td>Accelerate</td><td>Hugging Face launch/config abstraction</td><td>Orchestrates DeepSpeed/FSDP rather than replacing the sharding engine</td></tr>
+              <tr><td>FairScale</td><td>Earlier Meta sharding/checkpointing toolkit</td><td>Historically important; much of the center moved into native PyTorch FSDP</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <nav class="post-nav">
+        <a href="./tensorrt.html">← TensorRT</a>
+        <a href="./langgraph.html">LangGraph →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

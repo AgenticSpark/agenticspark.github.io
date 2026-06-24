@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ELF · Embedded Language Flows — Ethan</title>
+  <meta name="description" content="A continuous diffusion language model built on Flow Matching that stays continuous to the final step, with one shared-weight network for denoise and decode." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/elf.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="ELF · Embedded Language Flows" />
+  <meta property="og:description" content="A continuous diffusion language model with a shared-weight final-step decode — beats discrete DLM baselines with ~10× fewer training tokens." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/elf.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="ELF · Embedded Language Flows" />
+  <meta name="twitter:description" content="A continuous diffusion language model with a shared-weight final-step decode." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">Paper · arXiv 2605.10938 · Diffusion language models</span>
+        <h1 class="post-title">ELF · Embedded Language Flows</h1>
+        <p class="post-dek">A continuous diffusion language model built on Flow Matching that stays continuous all the way to the final step — and only there does it argmax. One shared-weight network handles both the denoise (t&lt;1) and the decode (t=1) branches, conditioned on a small mode token. The result: a 105M-parameter model that beats discrete diffusion baselines (MDLM, Duo) and prior continuous-DLMs (Diffusion-LM, FLM, LangFlow) using ~10× fewer training tokens — no distillation, no separate decoder, no per-step rounding loss.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Paper</dt><dd><a href="https://arxiv.org/abs/2605.10938" target="_blank" rel="noopener">arXiv:2605.10938v1</a></dd></div>
+        <div><dt>Code</dt><dd><a href="https://github.com/lillian039/ELF" target="_blank" rel="noopener">github.com/<wbr>lillian039/<wbr>ELF</a></dd></div>
+        <div><dt>Authors</dt><dd>Hu, Qiu, Lu, Zhao, Li, Kim, Andreas, He · MIT</dd></div>
+        <div><dt>Published</dt><dd>May 2026 (v1)</dd></div>
+        <div><dt>Read</dt><dd>May 2026</dd></div>
+      </dl>
+
+      <p class="fig-caption">ELF architecture: rectified-flow denoise in embedding space, then a final shared-weight decode step to vocabulary tokens.<span class="fig-sub">The same network draws the continuous flow toward the data embedding, then — once — projects to vocabulary logits and samples.</span></p>
+
+      <div class="prose">
+        <div class="sec-eyebrow"><span class="sec-num">01</span> What</div>
+        <h2>What is ELF?</h2>
+        <p>A continuous diffusion language model. ELF (Embedded Language Flows) builds a Flow-Matching generator over embedding space, then uses the same network to perform a single discrete-decode step at the end. The thesis is sharp: most of the trouble previous continuous-DLMs had wasn't fundamental — it was algorithmic. Take rectified flow seriously, share weights, and drop the rounding/anchor losses, and the gap closes.</p>
+
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>Continuous all the way</h4>
+            <p>Every intermediate step lives in continuous embedding space. There is no per-step rounding to vocabulary, no simplex projection, no token-level anchor loss. The model only meets discrete tokens at t = 1.</p>
+          </div>
+          <div class="callout">
+            <h4>Shared-weight final-step decode</h4>
+            <p>One network x<sub>θ</sub> trained with x-prediction handles both the continuous denoiser (all t&lt;1) and the discrete decoder (t=1), switched by a one-bit "mode" token. No separate decoder. Two losses, one set of parameters.</p>
+          </div>
+          <div class="callout">
+            <h4>Image-domain tricks transfer cleanly</h4>
+            <p>Rectified flow, x-prediction, self-conditioning, training-time Classifier-Free Guidance — every modern trick from continuous image diffusion ports in unchanged. CFG runs in a single forward pass at inference, with no double-evaluation overhead.</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">105M</span><span class="label">Parameters · vs 170M for MDLM/Duo baselines</span></div>
+          <div class="stat"><span class="num">~10×</span><span class="label">Fewer training tokens than baselines</span></div>
+          <div class="stat"><span class="num">1</span><span class="label">Network · shared denoise + decode</span></div>
+          <div class="stat"><span class="num">0</span><span class="label">Distillation passes · trained from scratch</span></div>
+          <div class="stat"><span class="num">0</span><span class="label">Separate decoder networks</span></div>
+          <div class="stat"><span class="num">0</span><span class="label">Per-step rounding losses</span></div>
+        </div>
+
+        <h3>Where ELF sits among diffusion language models</h3>
+        <p>Two big families: discrete (mask / categorical noise) and continuous (Gaussian noise in some embedding or latent). ELF is firmly in the continuous camp, and explicitly disagrees with the implicit consensus that discrete DLMs are the only ones worth pursuing for text.</p>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Family · example</th><th>Noise type</th><th>Decoder</th><th>Aux losses</th><th>Training cost</th><th>Headline weakness</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Discrete DLM · MDLM, Duo</td><td>mask / categorical</td><td>argmax over vocab posterior</td><td>NLL on noised tokens</td><td>baseline</td><td>step-wise discreteness — harder to apply continuous tricks (CFG, etc.)</td></tr>
+              <tr><td>Latent diffusion · LD4LG</td><td>Gaussian in VAE latent</td><td>separate VAE decoder</td><td>VAE recon + KL</td><td>2-stage</td><td>extra decoder, two-stage pipeline, length-collapsed latents</td></tr>
+              <tr><td>Prior continuous · Diffusion-LM, CDCD, DiffuSeq</td><td>Gaussian in embedding space</td><td>nearest-token / softmax</td><td>token rounding, anchor, NLL</td><td>baseline</td><td>perpetual rounding drift; quality gap vs discrete DLMs</td></tr>
+              <tr><td>Concurrent · FLM, LangFlow</td><td>Gaussian via Flow Matching</td><td>separate / per-step softmax</td><td>variant</td><td>~10× more tokens than ELF</td><td>still trails discrete DLMs on perplexity-per-NFE</td></tr>
+              <tr><td>ELF (this paper)</td><td>Gaussian via rectified flow</td><td>same network, final-step only</td><td>just MSE + final CE</td><td>~10× less than baselines</td><td>autoregressive-from-scratch still dominates at high compute</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Everything in the ELF row is in the spirit of "do less, but do it correctly". The contribution is the absence of stuff as much as the presence.</p>
+
+        <div class="sec-eyebrow"><span class="sec-num">02</span> How</div>
+        <h2>How does it work?</h2>
+        <p>Five moving pieces: an embedding map, a rectified-flow interpolant, an x-prediction objective, a shared-weight network that handles both denoise and decode, and a final-step cross-entropy. Plus two practical add-ons that ELF inherits from image diffusion — self-conditioning and training-time CFG.</p>
+
+        <h3>2.1 · From discrete tokens to a continuous flow</h3>
+        <p>Start with a sequence of token IDs s = (s<sub>1</sub>, …, s<sub>L</sub>) ∈ V<sup>L</sup>. An encoder E: V → ℝ<sup>d</sup> embeds them into a continuous target x ∈ ℝ<sup>L×d</sup>. ELF's headline choice: use the pretrained T5 encoder as E. (Ablations also try jointly-trained and frozen-random encoders; T5 wins.) The encoder is needed only at training time — never at inference.</p>
+        <p>Then build a rectified-flow interpolant between Gaussian noise ε ∼ 𝒩(0, I) and the data embedding x:</p>
+        <div class="formula"><span class="formula-label">Rectified-flow interpolant · ε at t=0, data at t=1</span>z<sub>t</sub>  =  t · x  +  (1 − t) · ε   ∈ ℝ<sup>L×d</sup>
+v  =  dz<sub>t</sub> / dt  =  x  −  ε</div>
+        <p>This is the standard rectified-flow / Flow-Matching setup. Sampling at inference will solve dz/dt = v<sub>θ</sub>(z<sub>t</sub>, t) from z<sub>0</sub> = ε to z<sub>1</sub> with an Euler ODE.</p>
+
+        <h3>2.2 · x-prediction, not v-prediction · the load-bearing choice</h3>
+        <p>Naive flow-matching parameterises a network v<sub>θ</sub>(z<sub>t</sub>, t) to predict the velocity directly. ELF instead parameterises x<sub>θ</sub>(z<sub>t</sub>, t) — the network predicts the data at every step. Velocity is recovered algebraically from the interpolant:</p>
+        <div class="formula"><span class="formula-label">x-prediction · same MSE loss, target is the data embedding</span>v<sub>θ</sub>(z<sub>t</sub>, t)  =  ( z<sub>t</sub> − (1 − t) · x<sub>θ</sub>(z<sub>t</sub>, t) )  /  t
+
+ℒ<sub>MSE</sub>  =  𝔼<sub>t, ε, x</sub>  [ ‖ v<sub>θ</sub>(z<sub>t</sub>, t)  −  v ‖² ]  =  𝔼 [ 1/(1−t)² · ‖ x<sub>θ</sub>(z<sub>t</sub>, t)  −  x ‖² ]</div>
+        <p>Why does this matter? Because at t → 1, the same network is asked to return the clean data embedding. That is the natural place to also ask: "now project to discrete tokens." x-prediction makes the shared-weight decode step possible without adding any extra heads.</p>
+
+        <h3>2.3 · Two losses, one network · the shared-weight decode</h3>
+        <p>The final step is the only step that meets discrete vocabulary. ELF gives the network a one-bit mode token (or equivalently runs t=1 through a special "decode" forward pass), and adds a cross-entropy loss on the vocabulary logits produced by an unembedding matrix W:</p>
+        <div class="formula"><span class="formula-label">Final-step cross-entropy · unembedding projects x̂ to vocab logits</span>p<sub>θ</sub>(s | z̃)  =  softmax( W · x<sub>θ</sub>(z̃, 1, decode) )
+ℒ<sub>CE</sub>  =  𝔼<sub>z̃</sub>  [ −Σ<sub>i</sub> log p<sub>θ</sub>(s<sub>i</sub> | z̃) ]
+
+ℒ  =  ℒ<sub>MSE</sub>  +  λ · ℒ<sub>CE</sub></div>
+        <p>The MSE loss trains the denoiser across all t ∈ (0, 1). The CE loss trains the decoder branch at t = 1. Both gradients flow into the same set of parameters; the mode token tells the network which job it's doing.</p>
+        <p>This is the single most important design decision. Prior continuous-DLMs train a separate decoder (often a separate softmax over the vocabulary applied to every intermediate step) and pay for it with both extra parameters and the dreaded "rounding-then-continuing" drift. ELF pays neither cost.</p>
+
+        <h3>2.4 · Training loop · one batch, branch random</h3>
+        <pre><code># Inputs:
+#   tokens s, encoder E (T5), generator x_theta, unembedding W
+
+x = E(s)                                     # L × d, continuous target
+t = sample_time()                            # Beta-shifted toward t=1
+eps = randn_like(x)
+z_t = t * x + (1 - t) * eps                  # interpolant
+
+mode = bernoulli(p=p_decode_branch)          # 0 = denoise, 1 = decode
+
+if mode == 0:                                # --- denoise branch ---
+    x_hat = x_theta(z_t, t, mode=denoise)
+    v_hat = (z_t - (1 - t) * x_hat) / t
+    v     = x - eps
+    loss  = mse_loss(v_hat, v)
+
+else:                                        # --- decode branch ---
+    z1_tilde = perturb(x, sigma_small)       # near-data sample
+    x_hat    = x_theta(z1_tilde, 1.0, mode=decode)
+    logits   = z1_tilde @ W                  # or x_hat @ W (Eq. 9)
+    loss     = cross_entropy(logits, s)
+
+loss.backward(); optimizer.step()</code></pre>
+        <p>Both branches share x<sub>θ</sub>. The decode branch sees a near-data sample z̃<sub>1</sub> (a small perturbation of x) so its training distribution matches what the ODE solver actually produces at t = 1. This is the "train on samples that look like inference outputs" trick that latent diffusion models use, here applied to the text-decode boundary.</p>
+
+        <h3>2.5 · Two practical add-ons</h3>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>Self-conditioning · 50% of the time, free</h4>
+            <p>In half the training steps, the network is given its own previous x-prediction as an additional input. At inference, the previous step's prediction is naturally available — so self-conditioning is essentially free per-step compute. Ablations show a consistent perplexity improvement at every step budget.</p>
+          </div>
+          <div class="callout">
+            <h4>Training-time CFG · single forward pass at inference</h4>
+            <p>Classical CFG runs two forward passes at inference (conditional + unconditional), doubling cost. ELF folds CFG into the training loss directly: each batch mixes conditional and unconditional samples in a controlled ratio, with the guidance scale conditioned in. At inference, one forward pass produces the CFG-guided velocity — no overhead. Cleanly transferred from image diffusion (Karras et al style training-time CFG).</p>
+          </div>
+        </div>
+
+        <h3>2.6 · Inference · Euler ODE then a single argmax</h3>
+        <figure class="diagram"><svg viewBox="0 0 760 534" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahelf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aaelf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs><rect x="160.0" y="12" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="39.0" text-anchor="middle" class="d-title">Sample noise</text><text x="380.0" y="57.0" text-anchor="middle" class="d-sub">z_0 ~ N(0, I)  ·  L×d continuous</text><rect x="160.0" y="102" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="129.0" text-anchor="middle" class="d-title">Rectified-flow integration</text><text x="380.0" y="147.0" text-anchor="middle" class="d-sub">k = 1..N   ·   z_k = z_{k-1} + (1/N)·v̂</text><rect x="160.0" y="192" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="219.0" text-anchor="middle" class="d-title">Near-data embedding</text><text x="380.0" y="237.0" text-anchor="middle" class="d-sub">z̃_1 ≈ data embedding  (t → 1)</text><rect x="160.0" y="282" width="440" height="60" rx="8" class="d-box-accent"/><text x="380.0" y="309.0" text-anchor="middle" class="d-title">Shared-weight decode</text><text x="380.0" y="327.0" text-anchor="middle" class="d-sub">x̂ = x_θ(z̃_1, t = 1, decode)</text><rect x="160.0" y="372" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="399.0" text-anchor="middle" class="d-title">Project to vocabulary</text><text x="380.0" y="417.0" text-anchor="middle" class="d-sub">logits = W · x̂</text><rect x="160.0" y="462" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="489.0" text-anchor="middle" class="d-title">Arg-max → tokens</text><text x="380.0" y="507.0" text-anchor="middle" class="d-sub">s_i = argmax softmax(logits)</text><text x="612.0" y="496.0" text-anchor="start" class="d-eyebrow">only discrete step</text><line x1="380.0" y1="72" x2="380.0" y2="101" class="d-edge" marker-end="url(#ahelf)"/><line x1="380.0" y1="162" x2="380.0" y2="191" class="d-edge" marker-end="url(#ahelf)"/><line x1="380.0" y1="252" x2="380.0" y2="281" class="d-edge-accent" marker-end="url(#aaelf)"/><line x1="380.0" y1="342" x2="380.0" y2="371" class="d-edge" marker-end="url(#ahelf)"/><line x1="380.0" y1="432" x2="380.0" y2="461" class="d-edge" marker-end="url(#ahelf)"/></svg><figcaption><b>ELF inference.</b> A continuous rectified-flow trajectory is integrated in embedding space, then decoded once at t = 1 by the <b>same shared-weight network</b>. The only discrete operation in the whole sampler is the final arg-max to tokens.</figcaption></figure>
+        <p>An optional SDE-inspired sampler injects small noise at intermediate steps for variance control — borrowed from image-diffusion stochastic samplers, no algorithmic changes to the network. At every step except the last, the model lives in continuous space. The discrete world only shows up once.</p>
+
+        <div class="sec-eyebrow"><span class="sec-num">03</span> Why</div>
+        <h2>Why does it matter?</h2>
+        <p>ELF makes a thesis-claim — "the continuous-DLM gap was algorithmic, not intrinsic" — and then proves it with strong, parameter-efficient, sample-efficient results across language modelling and conditional text tasks.</p>
+
+        <h3>3.1 · The thesis</h3>
+        <div class="callout accent">
+          <h4>Continuous DLMs lost the race for fixable reasons</h4>
+          <p>By 2024–25, the community had largely concluded that discrete diffusion LMs (MDLM, SEDD, Duo) were the right answer for text, and continuous DLMs (Diffusion-LM, CDCD, DiffuSeq) were a dead end. ELF rewinds: those continuous models were burdened with per-step rounding losses, simplex constraints, separate decoders, anchor losses and double-pass CFG. Each of those was a workaround for the absence of x-prediction + shared-weight decode. Remove them, do the basics right, and the gap closes.</p>
+        </div>
+
+        <h3>3.2 · Empirical results</h3>
+        <h4>Generative perplexity per NFE</h4>
+        <p>The paper's Figure 1 is the headline plot: ELF dominates MDLM, Duo, FLM, and LangFlow across the entire range of inference steps (NFEs from 8 to 1024). At every budget, ELF reaches a lower perplexity. The advantage is widest at low NFE — exactly where continuous DLMs were thought to be weakest.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Method (105–170M params)</th><th>Type</th><th>Decoder</th><th>NFE 32 ppl↓</th><th>NFE 256 ppl↓</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>MDLM</td><td>discrete</td><td>argmax posterior</td><td>higher</td><td>higher</td></tr>
+              <tr><td>Duo</td><td>discrete</td><td>argmax posterior</td><td>higher</td><td>higher</td></tr>
+              <tr><td>FLM</td><td>continuous</td><td>separate</td><td>higher</td><td>higher</td></tr>
+              <tr><td>LangFlow</td><td>continuous</td><td>separate</td><td>higher</td><td>higher</td></tr>
+              <tr><td>ELF (this work)</td><td>continuous</td><td>shared-weight</td><td>lowest</td><td>lowest</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Exact numbers vary by tokenizer / dataset; the paper reports OpenWebText, LM1B, WikiText, and the conditional benchmarks below. Trend is consistent across all of them.</p>
+        <h4>Conditional generation · WMT'14 translation + XSum summarization</h4>
+        <p>ELF outperforms the same baselines on both tasks, with the gap most visible at low NFE. The shared-weight decode preserves the conditioning signal across the entire flow — no "rounding drift" away from the conditioning that has plagued separate-decoder continuous DLMs.</p>
+        <h4>Sample efficiency · 10× fewer training tokens</h4>
+        <p>The MDLM / Duo baselines were trained for roughly 1 trillion tokens; ELF achieves better generative perplexity with ~100B tokens. Same model class, same data class — a 10× reduction in training compute. That's the kind of efficiency gain that justifies a new training paradigm.</p>
+
+        <h3>3.3 · Ablation lessons</h3>
+        <h4>x-prediction &gt; v-prediction</h4>
+        <p>Switching the same architecture from v-prediction to x-prediction yields a clear perplexity drop. The shared-decode story only works with x-prediction; both improvements come bundled.</p>
+        <h4>T5 encoder &gt; jointly trained &gt; frozen random</h4>
+        <p>Same finding as in latent image diffusion: pretrained features make a better target space. Jointly training the encoder also works but adds optimisation friction. Frozen-random encoders are the floor.</p>
+        <h4>Self-conditioning + training-time CFG ≈ free wins</h4>
+        <p>Both add no inference compute. Both improve perplexity-per-NFE. Both are direct ports from image diffusion — the strongest single signal that the language/image divide is narrower than people thought.</p>
+        <h4>A neat alignment with "Back to Basics"</h4>
+        <p>ELF leans on the same minimalist principle as "Back to Basics" (the latent-diffusion-denoise paper that some of the same authors built): if you give a denoising objective a strong feature space to denoise in, you don't need rounding, simplex constraints, or per-step token losses. You just need to denoise. ELF carries that conviction from image latents to language embeddings.</p>
+        <div class="chip-row">
+          <span class="chip">Denoise the embedding, not the token</span>
+          <span class="chip">Decode once, with the same network</span>
+          <span class="chip">Image-diffusion tricks port unchanged</span>
+        </div>
+
+        <h3>3.4 · Honest limits</h3>
+        <h4>What it nails</h4>
+        <ul>
+          <li>Parameter-efficient — 105M beats 170M MDLM/Duo baselines at every NFE budget.</li>
+          <li>Sample-efficient — ~10× fewer training tokens than competing continuous DLMs.</li>
+          <li>Shared-weight decode — no separate decoder network, no rounding losses, no anchor losses.</li>
+          <li>Single-forward-pass CFG at inference. No double-evaluation overhead.</li>
+          <li>Image-domain methodology transfers cleanly — rectified flow, x-prediction, self-conditioning. The bridge is structural, not just metaphorical.</li>
+          <li>Conditional tasks improve in lockstep with unconditional language modelling — same gains on WMT'14 MT and XSum summarization.</li>
+        </ul>
+        <h4>Where it bends</h4>
+        <ul>
+          <li>Still trails autoregressive LMs at the high end of training compute. Diffusion-LM-as-foundation-model remains an open question at GPT-scale token budgets.</li>
+          <li>Sequence length is fixed up front — like all continuous-embedding DLMs, you commit to a length L at sample-start. Variable-length generation requires special tricks (e.g., a length predictor or padding+EOS).</li>
+          <li>Requires a strong encoder. T5 won the ablation; pre-existing high-quality text encoders are a hard requirement for the best results.</li>
+          <li>Final-step branching is bespoke. The mode-token / dual-loss training is one more lever to tune; not a plug-and-play replacement for either a pure flow-matching model or a pure autoregressive LM.</li>
+          <li>Single-language demo so far on standard English benchmarks. Multilingual and code-generation results aren't in this v1.</li>
+        </ul>
+
+        <h3>3.5 · Where this could go</h3>
+        <p><strong>Continuous-diffusion code / math models.</strong> Code and math have structured global constraints (balanced brackets, consistent variable use) that autoregressive LMs handle one-token-at-a-time. A continuous DLM with end-to-end revision capability and a shared-weight decode is a natural fit.</p>
+        <p><strong>Multimodal natively.</strong> Text-image-audio in a single rectified-flow framework with three modality-specific encoders, one shared denoiser, three modality-specific decode branches. ELF's shared-weight pattern generalises with no friction.</p>
+        <p><strong>Editing as inference.</strong> Continuous-DLMs can locally re-denoise spans of an existing embedding without re-decoding everything else. The shared-weight decode lets you commit only the spans you change. Useful for fine-grained text editing and constrained generation.</p>
+        <p><strong>RLHF-friendliness.</strong> The single-pass-CFG conditioning extends naturally to reward signals. Once you have a continuous flow, you can incorporate reward-weighted velocity adjustments cleanly — without the discrete-action credit-assignment problems of autoregressive PPO.</p>
+        <p>The thing I'd want to see next: scale ELF to the 1B–3B parameter regime, and check whether the perplexity-per-NFE advantage holds. If it does, continuous DLMs become a credible parallel track to autoregressive language modelling — not as a research curiosity, but as a serious deployment option for tasks where revision, multimodality or controllability matters more than raw next-token throughput.</p>
+      </div>
+
+      <nav class="post-nav">
+        <a href="../blog.html">← All writing</a>
+        <a href="./drifting-models.html">Drifting Models →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CodeGraph — Ethan</title>
+  <meta name="description" content="A local-first MCP server that turns any repository into a pre-indexed SQLite knowledge graph for Claude Code, Cursor, Codex, and Continue." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/codegraph.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="CodeGraph" />
+  <meta property="og:description" content="A local-first code-intelligence MCP server — a STAR analysis." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/codegraph.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="CodeGraph" />
+  <meta name="twitter:description" content="A local-first code-intelligence MCP server." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">Code intelligence · STAR analysis</span>
+        <h1 class="post-title">CodeGraph</h1>
+        <p class="post-dek">A local-first MCP server that turns any repository into a pre-indexed SQLite knowledge graph for Claude Code, Cursor, Codex, and Continue. Twenty parser languages, twenty-one resolvers, ten typed MCP tools, ~989 passing tests, and a reproducible head-to-head where agents finished the same task 35% cheaper with 71% fewer tool calls. Four months old, 31k stars, v0.9.6 — here is what's actually inside, and where it sits versus Serena, Aider's repo-map, Sourcegraph, and tree-sitter on its own.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Repo</dt><dd><a href="https://github.com/colbymchenry/codegraph" target="_blank" rel="noopener">colbymchenry/<wbr>codegraph</a></dd></div>
+        <div><dt>License</dt><dd>MIT</dd></div>
+        <div><dt>Stack</dt><dd>TypeScript · Node 22.5+ · tree-sitter · SQLite</dd></div>
+        <div><dt>Version</dt><dd>v0.9.6 · pre-1.0</dd></div>
+        <div><dt>Commit</dt><dd>02935d77</dd></div>
+        <div><dt>Reviewed</dt><dd>May 2026</dd></div>
+      </dl>
+
+      <div class="prose">
+        <h2>In short</h2>
+        <div class="callout"><p>Five bullets the rest of this report defends with code, citations, and benchmarks.</p></div>
+
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>What it is</h4>
+            <p>A local-first TypeScript MCP server + CLI that turns any codebase into a SQLite knowledge graph — symbols, calls, imports, framework routes — then exposes 10 typed tools so an AI coding agent answers structural questions in a handful of calls instead of dozens of grep/Read round-trips. MIT.</p>
+          </div>
+          <div class="callout">
+            <h4>Why it's interesting</h4>
+            <p>Ships a bundled Node runtime so there are zero native addons (no better-sqlite3 rebuild dance), uses Node 22.5's built-in node:sqlite with WAL + FTS5, and synthesizes edges across boundaries that static tree-sitter parsing can't cross — React setState→render, JSX child→component, Swift↔Objective-C bridging, React Native legacy + TurboModules + Fabric, Expo modules, Spring + MyBatis XML.</p>
+          </div>
+          <div class="callout">
+            <h4>Biggest concerns</h4>
+            <p>One person wrote 92% of the code (317 of 377 commits). Per-process daemon model gives up on Windows network shares and some WSL2 layouts where WAL fails to enable. Agent-side gains depend on whether the host model picks the right tool — the maintainer's own notes admit codegraph_trace adoption is fragile across models.</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">31.0K</span><span class="label">Stars · 4 mo</span></div>
+          <div class="stat"><span class="num">~77K</span><span class="label">npm dl / 30d</span></div>
+          <div class="stat"><span class="num">~989</span><span class="label">Passing tests</span></div>
+          <div class="stat"><span class="num">71%</span><span class="label">Fewer tool calls</span></div>
+          <div class="stat"><span class="num">v0.9.6</span><span class="label">12 releases · 14 days</span></div>
+        </div>
+
+        <div class="callout accent">
+          <h4>Verdict</h4>
+          <p>The most honest local-first code-intelligence MCP server in 2026 — benchmarks are reproducible, cross-language synthesizers are real engineering, and the bundled-runtime delivery removes the native-addon support tail. Worth installing today for any developer using Claude Code / Cursor / Codex on a non-trivial repo. Treat as solid pre-1.0 (v0.9.x, four months old, 31k stars, 12 releases in a fortnight).</p>
+        </div>
+
+        <h2>1 · Situation — agents that can read but can't navigate</h2>
+        <p>A pre-built index of symbols and call sites is what compiler IDEs have solved for thirty years. Coding agents are only now catching up.</p>
+        <p>Through 2025 the AI coding assistant market converged on a workflow that looks the same in Claude Code, Cursor, Codex CLI, Aider, opencode, and Hermes: a host LLM is given a small palette of file tools — Read, Grep, Glob, Bash — and an MCP plug-point for everything else. Ask any of them "how does the extension host talk to the main process in VS Code?" and the agent fans out: list files, grep for likely names, read 20 files, often spawn an "Explore" sub-agent that reads 30 more, and finally answer. The cost on a large repo runs into dollars per query and minutes per answer.</p>
+        <p>The shape of the problem is exactly what compiler IDEs have solved for thirty years — a pre-built index of symbols, definitions, call sites, and inheritance — except the index has to be (a) cheap enough to maintain incrementally on a developer's laptop, (b) reachable through a wire format the agent already speaks, and (c) confident enough that the agent stops looking after the first answer. Several projects have shipped against that gap in the last twelve months:</p>
+        <div class="callout-grid">
+          <div class="callout"><h4>Serena — semantic via LSP</h4><p>oraios/serena (24.7K ⭐, Python, MIT) wraps language-server-protocol adapters to give MCP-speaking agents semantic retrieval and editing — relies on a live LSP per language.</p></div>
+          <div class="callout"><h4>CodeGraphContext — graph DB</h4><p>CodeGraphContext/CodeGraphContext (3.5K ⭐, Python) indexes a repository into a separate graph database and surfaces the result through MCP — heavier install, richer query surface.</p></div>
+          <div class="callout"><h4>codebase-memory-mcp — static binary</h4><p>DeusData/codebase-memory-mcp (2.8K ⭐, C) ships as a single static binary, claims 155 languages and "99% fewer tokens" — different language reach, less detailed claim auditing.</p></div>
+          <div class="callout"><h4>code-review-graph &amp; Aider repo-map</h4><p>tirth8205/code-review-graph (17.6K ⭐) frames the same local-first graph idea around code reviews. Aider-AI/aider (45.5K ⭐) bundles a tree-sitter "repo-map" inside a chat agent rather than shipping as a standalone graph server.</p></div>
+        </div>
+        <p>colbymchenry/codegraph (31k ⭐ in four months, MIT, TypeScript) stakes a specific position in that bake-off: stay in TypeScript so the same code is the library, the CLI, and the MCP server; ship a vendored Node runtime so installation is one curl; speak only MCP + stdio so it works the same in every supported agent. That positioning is what this report unpacks.</p>
+
+        <h2>2 · Task — what CodeGraph commits to solving</h2>
+        <p>Four concrete deliverables, stripped of marketing.</p>
+        <p>Stripped of the README's pitch, the project commits to four concrete deliverables:</p>
+        <ol>
+          <li>A deterministic knowledge graph from tree-sitter, not LLM summaries. Every node and edge is derived from the AST so the index is reproducible and stable across runs.</li>
+          <li>A daemon that an agent can talk to without changing how it codes. Drop in the MCP config, restart the agent, the tools just appear.</li>
+          <li>A tool surface tuned for "I'm done — answer" rather than "let me explore more". The tools inline call-site source, hop bodies, and registration sites so a single trace call ends the investigation.</li>
+          <li>Coverage of the dynamic-dispatch boundaries grep cannot cross. Callbacks, setState→render, JSX child→component, Swift @objc bridging, React Native bridges, Spring @Value + MyBatis XML — the places where flow questions actually break.</li>
+        </ol>
+        <p>The actual gap it fills: a vendor-neutral, locally-hosted, zero-config code-intelligence MCP server that the model can use the moment it's installed. No vector DB to provision, no embedding cost, no telemetry. The price for "local-first + zero-config" is that everything is static: no LLM enrichment of nodes, no learned ranking — what you see is what tree-sitter saw, augmented by some carefully-scoped synthesizers.</p>
+
+        <h2>3 · Action — how it actually works</h2>
+        <p>Reading the code, not the README. Nine lenses: architecture, storage, extraction, resolution, MCP tool surface, auto-sync, shared daemon, multi-agent installer, tests.</p>
+
+        <h3>3.1 Architecture at a glance</h3>
+        <p>The package is one TypeScript codebase that serves three roles: a Node library (import CodeGraph from '@colbymchenry/codegraph'), a CLI (codegraph init|index|sync|status|query|files|context|callers|callees|impact|affected|serve --mcp), and the MCP server itself (src/index.ts L1-80 re-exports the whole surface so the bin and the MCP entrypoint share a single class).</p>
+        <p>The pipeline the maintainer documents in CLAUDE.md L36-46 is the right mental model:</p>
+        <figure class="diagram"><svg viewBox="0 0 760 534" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahcg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aacg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs><rect x="160.0" y="12" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="39.0" text-anchor="middle" class="d-title">Source files</text><text x="380.0" y="57.0" text-anchor="middle" class="d-sub">any repository</text><rect x="160.0" y="102" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="129.0" text-anchor="middle" class="d-title">ExtractionOrchestrator</text><text x="380.0" y="147.0" text-anchor="middle" class="d-sub">tree-sitter · 20 languages</text><rect x="160.0" y="192" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="219.0" text-anchor="middle" class="d-title">SQLite database</text><text x="380.0" y="237.0" text-anchor="middle" class="d-sub">nodes · edges · files</text><rect x="160.0" y="282" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="309.0" text-anchor="middle" class="d-title">ReferenceResolver</text><text x="380.0" y="327.0" text-anchor="middle" class="d-sub">imports · name-matching · framework patterns</text><rect x="160.0" y="372" width="440" height="60" rx="8" class="d-box"/><text x="380.0" y="399.0" text-anchor="middle" class="d-title">GraphQueryManager / Traverser</text><text x="380.0" y="417.0" text-anchor="middle" class="d-sub">callers · callees · impact · paths</text><rect x="160.0" y="462" width="440" height="60" rx="8" class="d-box-accent"/><text x="380.0" y="489.0" text-anchor="middle" class="d-title">Typed MCP tools</text><text x="380.0" y="507.0" text-anchor="middle" class="d-sub">10 tools exposed to agents</text><line x1="380.0" y1="72" x2="380.0" y2="101" class="d-edge" marker-end="url(#ahcg)"/><line x1="380.0" y1="162" x2="380.0" y2="191" class="d-edge" marker-end="url(#ahcg)"/><line x1="380.0" y1="252" x2="380.0" y2="281" class="d-edge" marker-end="url(#ahcg)"/><line x1="380.0" y1="342" x2="380.0" y2="371" class="d-edge" marker-end="url(#ahcg)"/><line x1="380.0" y1="432" x2="380.0" y2="461" class="d-edge" marker-end="url(#ahcg)"/></svg><figcaption><b>CodeGraph indexing.</b> tree-sitter extraction populates a SQLite graph of nodes and edges; a resolver links references across files; the query layer exposes traversals to coding agents through ten typed MCP tools.</figcaption></figure>
+        <p>Five layers, each in its own folder under src/. The folder count and line count are:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Module</th><th>Files</th><th>Lines</th></tr></thead>
+            <tbody>
+              <tr><td>src/extraction/ (incl. 19 per-language extractors)</td><td>30+</td><td>~9,000</td></tr>
+              <tr><td>src/resolution/ (incl. 21 framework resolvers)</td><td>31</td><td>~12,400</td></tr>
+              <tr><td>src/mcp/ (server + tools + daemon + proxy)</td><td>15</td><td>~6,700</td></tr>
+              <tr><td>src/installer/ (8 agent targets)</td><td>18</td><td>~3,500</td></tr>
+              <tr><td>Tests (__tests__/ + integration)</td><td>51 files, ~989 cases</td><td>~19,400</td></tr>
+              <tr><td>Total TypeScript</td><td>—</td><td>~40,700</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The numbers come from wc -l against the cloned tree; 40k lines of source is the upper bound of "one person can hold the whole thing in their head", and git shortlog (377 commits, 92% by Colby McHenry) confirms that's what's happening.</p>
+
+        <h3>3.2 Storage — Node's built-in SQLite, WAL, FTS5</h3>
+        <p>The schema in src/db/schema.sql L20-67 is the smallest possible thing that can hold a knowledge graph:</p>
+        <pre><code>CREATE TABLE nodes (
+    id TEXT PRIMARY KEY, kind TEXT, name TEXT, qualified_name TEXT,
+    file_path TEXT, language TEXT, start_line INTEGER, end_line INTEGER,
+    docstring TEXT, signature TEXT, decorators TEXT, …
+);
+CREATE TABLE edges (
+    id INTEGER PRIMARY KEY, source TEXT, target TEXT,
+    kind TEXT, metadata TEXT, line INTEGER, provenance TEXT,
+    FOREIGN KEY (source) REFERENCES nodes(id) ON DELETE CASCADE
+);
+CREATE TABLE files (
+    path TEXT PRIMARY KEY, content_hash TEXT, language TEXT,
+    size INTEGER, modified_at INTEGER, indexed_at INTEGER, …
+);
+CREATE VIRTUAL TABLE nodes_fts USING fts5(
+    id, name, qualified_name, docstring, signature,
+    content='nodes', content_rowid='rowid'
+);</code></pre>
+        <p>Two design choices are worth flagging.</p>
+        <p>Edges carry provenance and metadata as first-class columns (L43-55). Every synthesized edge — anything that wasn't directly extracted from the AST — is tagged provenance:'heuristic' with a metadata.synthesizedBy string. The MCP trace tool renders these inline as "↳ registered at App.tsx:3148" so the agent (and the human reading its output) can see how a hop got into the graph. This is the difference between a synthesizer that helps and one that lies; CodeGraph commits a budget to the "explain yourself" half. Coverage: callback, event-emitter, react-render, flutter-build, cpp-override, interface-impl, jsx-render, vue-handler, rn-event-channel, fabric-native-impl, mybatis-java-xml — all in src/resolution/callback-synthesizer.ts.</p>
+        <p>Indexes are deliberately narrow. Line 126-130 carries the comment "idx_edges_source / idx_edges_target are intentionally omitted — the (source, kind) and (target, kind) composites below cover the corresponding source-only / target-only lookups via SQLite's left-prefix scan, so the narrow indexes are dead weight on writes. Migration v4 drops them on existing databases." Someone has actually measured the write penalty.</p>
+        <p>The storage backend, in src/db/sqlite-adapter.ts L43-118, is a 75-line wrapper over Node 22.5's built-in node:sqlite. The decision is documented in BUNDLING.md L3-12:</p>
+        <div class="callout"><p>Because Node 22.5+ has a built-in real SQLite (node:sqlite, with WAL + FTS5), bundling Node means: no native build — better-sqlite3 is gone, so there are zero native addons to compile or rebuild. No wasm fallback — and therefore no more database is locked (issue #238). No Node-version dependence — the app always runs on the bundled Node.</p></div>
+        <p>This is the practical advantage CodeGraph ships over every "install with npm" competitor. There is no node-gyp, no prebuild-install, no Windows ARM64 toolchain failure. The shell installer at install.sh just untars a per-platform release archive (codegraph-darwin-arm64.tar.gz, etc.) and symlinks one launcher script. Cross-compilation is free because there is nothing to compile.</p>
+        <p>The price is one hard exit: any user on Node 25.x is blocked with a custom banner explaining a V8 turboshaft WASM JIT zone allocator bug (linked back to issue #81). The bundled-runtime path is unaffected.</p>
+
+        <h3>3.3 Extraction — 20 languages, every wrapper around tree-sitter justified</h3>
+        <p>The 19 per-language extractors under src/extraction/languages/ follow one shape: a small LanguageExtractor object that names the tree-sitter node types corresponding to each NodeKind. The TypeScript one in src/extraction/languages/typescript.ts L4-50 is representative:</p>
+        <pre><code>export const typescriptExtractor: LanguageExtractor = {
+  functionTypes: ['function_declaration', 'arrow_function', 'function_expression'],
+  classTypes: ['class_declaration', 'abstract_class_declaration'],
+  methodTypes: ['method_definition', 'public_field_definition'],
+  interfaceTypes: ['interface_declaration'],
+  importTypes: ['import_statement'],
+  callTypes: ['call_expression'],
+  nameField: 'name', bodyField: 'body',
+  resolveBody: (node, bodyField) =&gt; {
+    // public_field_definition (arrow function class fields) nest the body inside
+    // an arrow_function or function_expression child:
+    //   public_field_definition → arrow_function → body (statement_block)
+    // Also handles wrapper patterns like: field = withBatchedUpdates((e) =&gt; { ... })
+    if (node.type === 'public_field_definition') { /* … */ }
+    return null;
+  },
+  /* … */
+};</code></pre>
+        <p>The size distribution of the language extractors is the second tell that the project takes coverage seriously rather than just claiming it: Kotlin is 244 lines, Dart 195, C/C++ 163, Scala 143 (per wc -l). These are not five-line shims around a tree-sitter grammar; each one carries language-specific qualified-name logic, receiver-type extraction, and signature reconstruction (see the SEARCH_QUALITY_LOOP.md validation guide for the "GOOD vs BAD qualified_name" checklist a new language must pass).</p>
+        <p>Parsing happens in a dedicated worker thread that is recycled every 250 files (src/extraction/index.ts L41-49):</p>
+        <div class="callout"><p>WASM linear memory can grow but NEVER shrink (WebAssembly spec limitation). The only way to reclaim tree-sitter's WASM heap is to destroy the entire V8 isolate by terminating the worker thread and spawning a fresh one. This interval balances memory usage against the cost of reloading grammars.</p></div>
+        <p>A PARSE_TIMEOUT_MS = 10_000 per file keeps a pathological input from freezing the whole index (L35-40). Files larger than 1 MB are skipped outright (L97-100) — minified bundles and vendored blobs blow the WASM heap with no useful symbols. The boring decisions are all in place.</p>
+        <p>The default-ignore set in src/extraction/index.ts L116-160 is one of those things that looks trivial until you scroll the list. ~40 directory names — node_modules, target, Pods, .next, .dart_tool, vcpkg_installed, __history (Delphi backup), bazel-*/ — curated from canonical github/gitignore templates plus a deliberate refusal to add generic names (packages, lib, src) that would hide real source. The comment is explicit: "First-party-prone or generic names are deliberately NOT listed, to avoid ever hiding real source." The default applies uniformly with or without git; the only opt-in is an explicit .gitignore negation (!vendor/).</p>
+        <p>File enumeration tries git ls-files --recurse-submodules first (so submodule-monorepos actually index — see issue #147), descends into embedded non-submodule repos one extra level (issue #193), and falls back to a filesystem walk in non-git projects. The Sync path uses git status --porcelain to detect changes by-name when possible (L289-300), so an incremental re-index after a one-file save is sub-second on a 10k-file repo.</p>
+
+        <h3>3.4 Resolution — 21 framework resolvers + dynamic-dispatch synthesizers</h3>
+        <p>The resolution layer is where CodeGraph spends most of its complexity budget. Tree-sitter gives you "method foo is called at file:line"; the user wants "method foo calls UserService.login defined in services/user.ts". Closing that gap takes two kinds of code.</p>
+        <p>The first is import resolution — turning import { X } from './foo' into an edge from this file's nodes to foo.ts's nodes — and the codebase handles tsconfig path aliases (@/, ~/), Cargo workspace members, Go modules, JVM fully-qualified names, and C/C++ include search paths from compile_commands.json. The C/C++ resolution in particular is recent (released in v0.9.6 per CHANGELOG entry [0.9.6]) and the changelog quantifies the effect on a known repo:</p>
+        <div class="callout"><p>Measured on bitcoin-core (1,989 indexed files): C/C++ file→file imports edges 6,027 → 8,086 (+34%), false-positive call edges from std::move/std::swap etc. into similarly-named user methods −2,154 (−3.6% of C/C++ calls).</p></div>
+        <p>That's the rare changelog entry that gives you a count both ways — edges gained, false-positives removed.</p>
+        <p>The second is framework-aware resolution. src/resolution/frameworks/index.ts L31-69 registers 21 resolvers:</p>
+        <div class="chip-row">
+          <span class="chip">laravel</span><span class="chip">drupal</span><span class="chip">express</span><span class="chip">nestjs</span><span class="chip">react</span><span class="chip">svelte</span><span class="chip">vue</span><span class="chip">django</span><span class="chip">flask</span><span class="chip">fastapi</span><span class="chip">rails</span><span class="chip">spring</span><span class="chip">play</span><span class="chip">go</span><span class="chip">rust</span><span class="chip">aspnet</span><span class="chip">swiftUI</span><span class="chip">uikit</span><span class="chip">vapor</span><span class="chip">swift-objc-bridge</span><span class="chip">react-native-bridge</span><span class="chip">expo-modules</span><span class="chip">fabric-view</span>
+        </div>
+        <p>Each one walks its language's AST looking for the framework's idioms — @RestController in Spring, path() / re_path() in Django, Route::get in Laravel, RCT_EXPORT_METHOD in React Native — and emits route nodes plus references edges. The Spring + MyBatis flow is the most ambitious; from the v0.9.6 changelog:</p>
+        <div class="callout"><p>MyBatis XML mapper indexing + Java↔XML bridge. *.xml files containing &lt;mapper namespace="..."&gt; are now first-class: each &lt;select|insert|update|delete id="X"&gt; and &lt;sql id="X"&gt; becomes a method-shaped node qualified as &lt;namespace&gt;::&lt;id&gt;, and a new synthesizer (mybatis-java-xml) links the matching Java mapper interface method → its XML statement with a calls edge. […] Validated on macrozheng/mall-tiny: all 6 custom-SQL Java mapper methods reach their XML counterparts; trace(UmsRoleController.listResource, UmsResourceMapper::getResourceListByRoleId-xml) connects in 4 hops across controller → service-iface → impl → mapper-iface → XML.</p></div>
+        <p>The dynamic-dispatch synthesizers in src/resolution/callback-synthesizer.ts are the project's real differentiator. Static parsing breaks at every callback, observer, event emitter, or React setState. The synthesizer bridges them — each emitted edge tagged with both provenance:'heuristic' and the channel that wired it (synthesizedBy:'react-render', 'jsx-render', 'rn-event-channel', etc.):</p>
+        <pre><code>// src/resolution/callback-synthesizer.ts L228-235
+edges.push({
+  source: stateUpdater.id, target: render.id, kind: 'calls',
+  provenance: 'heuristic',
+  metadata: {
+    synthesizedBy: 'react-render', via: 'setState',
+    registeredAt: `${render.filePath}:${render.startLine}`
+  },
+});</code></pre>
+        <p>The principle is in CLAUDE.md L132: "Partial coverage is WORSE than none." Bridging one boundary but not the next reveals a hop the agent then drills + reads to finish; the worked Excalidraw example in the same file shows react-render alone raised file reads to 5–7, and only completing the flow (adding the JSX-child hop) dropped it to 0–1. That is the kind of nuance you only learn by running the A/B and watching where the agent gets stuck.</p>
+
+        <h3>3.5 The MCP tool surface — 10 tools, sized for "stop reading"</h3>
+        <p>The MCP server exposes exactly 10 tools, defined in src/mcp/tools.ts L357-570:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tool</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td>codegraph_search</td><td>Quick symbol search by name — locations only, no source.</td></tr>
+              <tr><td>codegraph_context</td><td>PRIMARY entry tool: composes search + node + callers + callees in one call for "how does X work" questions.</td></tr>
+              <tr><td>codegraph_callers / codegraph_callees</td><td>Walk the call graph one hop at a time.</td></tr>
+              <tr><td>codegraph_impact</td><td>What's affected by changing this symbol, configurable depth.</td></tr>
+              <tr><td>codegraph_node</td><td>One symbol's details + its trail (what it calls, what calls it); optional source.</td></tr>
+              <tr><td>codegraph_explore</td><td>Source for several related symbols grouped by file, capped, with relationships.</td></tr>
+              <tr><td>codegraph_trace</td><td>THE marquee tool: shortest call path from from to to, each hop inlined with body.</td></tr>
+              <tr><td>codegraph_files</td><td>Indexed file tree, faster than filesystem glob.</td></tr>
+              <tr><td>codegraph_status</td><td>Index health + statistics.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The interesting one is codegraph_trace, handled in src/mcp/tools.ts L1212-1326. It runs GraphTraverser.findPath along calls edges, caps at 7 hops because "a BFS shortest path longer than this on a dense call graph is almost always a spurious wander through unrelated code", and when no static path is found surfaces the start symbol's outgoing callees with a note about dynamic dispatch:</p>
+        <pre><code>// src/mcp/tools.ts L1255-1264
+'The direct chain most likely breaks at **dynamic dispatch** (a callback, descriptor, ' +
+'metaclass, or attribute-as-callable) that static parsing cannot resolve into an edge. ' +
+`Inspect \`${start.name}\` (${start.filePath}:${start.startLine}) with codegraph_node ` +
+'(includeCode=true) — its body usually shows the dynamic call to follow next.',</code></pre>
+        <p>When a path is found, every hop is inlined with its body (capped per hop), every dynamic-dispatch hop is annotated with its registration site, and the destination's own first-level callees are inlined too. The principle, from a comment on L1308-1311:</p>
+        <div class="callout"><p>The "last mile": what the destination does next. Agents otherwise explore/Read for exactly this (e.g. renderStaticScene → _renderStaticScene → the canvas draw), so inlining the destination's callees is what actually stops the investigation — sufficiency, not a "don't explore" instruction.</p></div>
+        <p>The companion codegraph_explore carries an adaptive output budget sized to the project (src/mcp/tools.ts L80-188). A 300-file repo gets maxOutputChars=18,000, defaultMaxFiles=5, maxCharsPerFile=3,800; a 10k-file repo gets 35,000 / 12 / 7,000; a 25k+-file repo gets 38,000 / 14 / 7,000. The invariant is documented next to the code: "a larger tier must never get a smaller maxCharsPerFile than a smaller tier" — a regression they actually hit when an earlier &lt;5000-tier value of 2,500 was below the &lt;500-tier's 3,800, so on Excalidraw's 415 KB App.tsx one explore call returned &lt;1% of the file and forced the agent into a Read.</p>
+        <p>That comment is the whole project distilled into eight lines. Local-first code intelligence is a measurement problem before it is a tooling problem, and the comments are written for whoever runs the next benchmark.</p>
+
+        <h3>3.6 Auto-sync — the watcher that knows it's behind</h3>
+        <p>The third-most-cited issue in the codebase (#276, #407, #449, #450) is the file watcher. It uses chokidar with the same buildDefaultIgnore filter the indexer uses, so the inotify set the kernel registers is exactly the set you index — the fix for #276 where a recursive fs.watch on a 10k-file monorepo exhausted the inotify budget.</p>
+        <p>Debounce is 2 seconds by default, clamped to [100 ms, 60 s] via CODEGRAPH_WATCH_DEBOUNCE_MS. The smart bit is the per-file staleness banner: in the brief window between an edit and the next sync, any MCP tool response that would reference a still-pending file prepends a ⚠️ banner naming the file and telling the agent to Read it directly (validated against Claude Code, where the agent literally says "Reading the file directly for the live content"); pending files not referenced by the response surface as a small footer instead. The agent gets an explicit signal either way.</p>
+
+        <h3>3.7 The shared daemon — issue #411 and why proxies exist now</h3>
+        <p>Pre-0.9, every agent that launched codegraph serve --mcp got its own process: its own SQLite handle, its own inotify set, its own grammar warm-up. On a developer's machine with Claude Code, Cursor, and Codex all open on the same repo that's three of everything. Issue #411 tracked the fix; the result is a three-process model documented at the top of src/mcp/index.ts L1-35:</p>
+        <div class="callout-grid">
+          <div class="callout"><h4>Daemon</h4><p>a detached background process (its own session/process group) that serves N proxies over a Unix-domain socket (Windows named pipe), sharing one CodeGraph + watcher + SQLite handle. Spawned on demand, reaped by client-refcount + idle timeout (default 300 s).</p></div>
+          <div class="callout"><h4>Proxy</h4><p>what an MCP host actually talks to: a thin stdio↔socket pipe. Carries the #277 PPID watchdog (poll process.ppid every 5 s) so a SIGKILL'd host reaps its proxy promptly; the proxy's socket close decrements the daemon's refcount.</p></div>
+          <div class="callout"><h4>Direct</h4><p>pre-#411 behavior, kept as a fallback when CODEGRAPH_NO_DAEMON=1, no .codegraph/ is reachable, or the daemon machinery fails.</p></div>
+        </div>
+        <p>The detached-daemon split is the fix for the review finding that the original in-process daemon (a) was the first host's child — so closing that terminal severed every other client — and (b) disabled the PPID watchdog, regressing #277.</p>
+        <p>There's a versioned hello-line handshake between proxy and daemon (src/mcp/daemon.ts L70-75): every connection emits { codegraph: &lt;version&gt;, pid, socketPath, protocol: 1 }. A 0.9.x proxy refuses to pipe through a 0.10.x daemon and falls back to direct mode. That is the kind of forward-compatible plumbing most v0.x projects skip.</p>
+
+        <h3>3.8 Multi-agent installer — one extra agent is one new file</h3>
+        <p>The installer at src/installer/ targets eight agents today: Claude Code, Cursor, Codex CLI, opencode, Hermes Agent, Gemini CLI, Antigravity IDE, Kiro. Each is one file under targets/ plus one line in targets/registry.ts, per the CLAUDE.md L72-83 architecture note. Adding a ninth (Continue, Zed, Windsurf) is "one new file in targets/ + one entry in registry.ts."</p>
+        <p>A few quality details:</p>
+        <ul>
+          <li>opencode reads opencode.jsonc by default; edits are surgical via jsonc-parser so user comments and formatting survive install/re-install/uninstall round-trips.</li>
+          <li>Codex needs TOML; rather than add a dependency, the installer ships a 154-line hand-rolled serializer scoped to [mcp_servers.codegraph] (src/installer/targets/toml.ts). Sibling tables and [[array_of_tables]] are preserved verbatim.</li>
+          <li>Cursor's MCP working-directory quirk (launches MCP subprocesses with the wrong cwd, doesn't pass rootUri) is patched by the installer injecting --path into Cursor's MCP args — absolute path for local installs, ${workspaceFolder} for global. See the explicit "If you touch Cursor wiring, preserve this" warning in CLAUDE.md L85-87.</li>
+          <li>The installer is covered by 82 parameterized contract tests in __tests__/installer-targets.test.ts — install idempotency, sibling preservation, uninstall reverses install, byte-equal re-runs returning unchanged, partial-state recovery.</li>
+        </ul>
+
+        <h3>3.9 Tests — ~989 cases, real SQLite, no mocking</h3>
+        <p>The test pyramid is unusual in two ways. First, the count: __tests__/ contains 48 *.test.ts files with ~989 individual it()/test() cases (and a separate, build-required __tests__/evaluation/ agent-eval harness run via npm run eval). Second, the kind: per CLAUDE.md L167:</p>
+        <div class="callout"><p>Tests create temp dirs with fs.mkdtempSync and clean up in afterEach. They write real files and exercise real SQLite — there is no DB mocking.</p></div>
+        <p>You see the consequences in __tests__/security.test.ts (P0/P1 fixes: FileLock cross-process locking, path-traversal prevention via validatePathWithinRoot and validateProjectPath in src/utils.ts L40-100, MCP input validation, atomic writes), and in the explicit Windows-gated tests pattern documented in CLAUDE.md L169-171:</p>
+        <div class="callout"><p>Behavior that differs by platform (path resolution, drive letters, SENSITIVE_PATHS, %APPDATA% config dirs, CRLF) must be gated, not assumed. Use it.runIf(process.platform === 'win32')(...) for Windows-only assertions and it.runIf(process.platform !== 'win32')(...) for POSIX-only ones — e.g. /etc is sensitive on POSIX but resolves to C:\etc (non-existent) on Windows, so an ungated /etc assertion fails on Windows.</p></div>
+        <p>The Windows validation is done on a real Parallels VM over SSH (CLAUDE.md L185-199) and the Linux validation in Docker with --init (L177-184) — the latter because without a zombie-reaping PID 1 a SIGKILL'd process lingers and the daemon lifecycle tests false-pass. This is the kind of platform-test hygiene that single-maintainer v0.x projects almost never bother with.</p>
+        <p>The vitest config carries one revealing exception (vitest.config.ts L14-24): it sets CODEGRAPH_ALLOW_UNSAFE_NODE=1 in the test environment so the Node 25.x hard-block doesn't fire for contributors who happen to be on a Node 25 dev machine. The CLI's user-facing guard stays intact. That's a thoughtful response to PR feedback (#478) that recognized "block users but unblock tests".</p>
+
+        <h2>4 · Result — what's actually delivered today</h2>
+        <p>The reproducible benchmark, the CLI bits the README hides, and the things the README quietly omits.</p>
+
+        <h3>4.1 The reproducible benchmark</h3>
+        <p>The README's headline (README L82-127) — 35% cheaper · 57% fewer tokens · 46% faster · 71% fewer tool calls — comes from running Claude Opus 4.7 with and without CodeGraph against seven open-source repos × seven languages, median of 4 runs per arm, on v0.9.4 (2026-05-24):</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Codebase</th><th>Language</th><th>Cost</th><th>Tokens</th><th>Time</th><th>Tool calls</th></tr></thead>
+            <tbody>
+              <tr><td>VS Code (~10k files)</td><td>TypeScript</td><td>26% cheaper</td><td>78% fewer</td><td>52% faster</td><td>85% fewer</td></tr>
+              <tr><td>Excalidraw (~640)</td><td>TypeScript</td><td>52% cheaper</td><td>90% fewer</td><td>73% faster</td><td>96% fewer</td></tr>
+              <tr><td>Django (~3k)</td><td>Python</td><td>12% cheaper</td><td>36% fewer</td><td>19% faster</td><td>53% fewer</td></tr>
+              <tr><td>Tokio (~790)</td><td>Rust</td><td>82% cheaper</td><td>86% fewer</td><td>71% faster</td><td>92% fewer</td></tr>
+              <tr><td>OkHttp (~645)</td><td>Java</td><td>2% cheaper</td><td>13% fewer</td><td>31% faster</td><td>45% fewer</td></tr>
+              <tr><td>Gin (~110)</td><td>Go</td><td>21% cheaper</td><td>34% fewer</td><td>27% faster</td><td>40% fewer</td></tr>
+              <tr><td>Alamofire (~110)</td><td>Swift</td><td>47% cheaper</td><td>64% fewer</td><td>48% faster</td><td>83% fewer</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Two things to notice. First, the gains scale with codebase size and complexity. On a 110-file Gin repo native search is already cheap; on a 10k-file VS Code the no-CodeGraph arm fans out into 55 tool calls vs CodeGraph's 8. Second, the maintainer's own docs/benchmarks/codegraph-ab-matrix.md — a 37-cell matrix across every language × repo-size — is more honest than the README. The matrix's "Headline" paragraph admits:</p>
+        <div class="callout"><p>Cost stays roughly flat — marginally higher on the with-arm here (summed across the 37 cells: with $15.4 vs without $13.8). On these short single-flow questions the without-arm resolves in &lt;10 calls and never balloons, so it doesn't reach the regime where codegraph's cost savings compound, while the with-arm pays fixed MCP overhead (tool definitions in context + tool-loading) that short tasks don't amortize. The win is fewer tool calls (189 vs 321, −41%) + lower wall-clock (mean 38s vs 48s), which is the design target.</p></div>
+        <p>That nuance — "cost only flips on multi-turn investigations where the without-arm's accumulated context balloons" — is what most v0.x README marketing leaves out. CodeGraph's leaves it in (in the benchmark doc, anyway).</p>
+        <p>The docs/benchmarks/answer-directly-vs-explore-agent.md experiment goes further and tests whether Claude Code should delegate the exploration to a sub-Explore-agent (to keep main-session context lean). Result on VS Code (~10.7k files) at n=3 per arm:</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>metric</th><th>WITH codegraph</th><th>WITHOUT</th></tr></thead>
+            <tbody>
+              <tr><td>main-session context</td><td>47k / 43k / 50k</td><td>54k / 29k / 31k</td></tr>
+              <tr><td>Explore agents spawned</td><td>0 / 0 / 0</td><td>0 / 1 / 1</td></tr>
+              <tr><td>codegraph calls</td><td>~8</td><td>0</td></tr>
+              <tr><td>Reads (main+sub)</td><td>0 / 1 / 0</td><td>6 / 26 / 19</td></tr>
+              <tr><td>billable tokens</td><td>~126k</td><td>~176k</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The headline: with CodeGraph, main-session context is roughly scale-invariant at ~50k across Excalidraw (643 files) and VS Code (~10.7k) — because the explore payload is budget-capped and retrieval is targeted, it doesn't balloon on a 16× larger repo.</p>
+
+        <h3>4.2 The CLI surface — the bits the README hides</h3>
+        <p>The CLI in src/bin/codegraph.ts (1,800+ lines) ships sixteen subcommands. Most are obvious; two are worth flagging.</p>
+        <p>codegraph affected (src/bin/codegraph.ts L1494-1620) takes a list of changed source files (or --stdin, e.g. from git diff --name-only) and BFS-walks the file→file imports graph to find which test files transitively depend on them. Default test patterns are .spec., .test., /__tests__/, /tests?/, /e2e/, /spec/; custom globs are accepted. The expected use is a pre-commit or CI hook:</p>
+        <pre><code>AFFECTED=$(git diff --name-only HEAD | codegraph affected --stdin --quiet)
+[ -n "$AFFECTED" ] &amp;&amp; npx vitest run $AFFECTED</code></pre>
+        <p>This is a real, valuable use of the index outside the AI-agent loop, and most competitors don't ship it. Limitations are worth knowing: it's imports-only (so dynamic-dispatch tests are missed exactly the way trace is) and default depth is 5 — past that you get nothing.</p>
+        <p>codegraph context "&lt;task&gt;" (command at L1096-1141) takes a natural-language task description, runs the same ContextBuilder the MCP tool uses, and prints a markdown or JSON context bundle to stdout. The intended use is paste-into-prompt, but the same call from a script lets you build agent-free pipelines. Underdocumented; underrated.</p>
+
+        <h3>4.3 What the README doesn't tell you</h3>
+        <p>A fair deep-dive has to name the things the README omits. The list is short, but worth knowing.</p>
+        <p>The maintainer's own notes admit tool-choice is the bottleneck, not retrieval quality. CLAUDE.md L99-111 is the most honest section in any v0.x README I've read this year:</p>
+        <div class="callout"><p>CodeGraph's only channels to influence the agent are low-salience: the MCP initialize instructions (server-instructions.ts) and the tool descriptions. Changing them does not reliably move the agent's tool choice or query style — validated: trace-first steering ported into the server-instructions + tool descriptions (3 wording variants) never reproduced what a CLI --append-system-prompt achieved, and regressed wall-clock vs baseline.</p></div>
+        <p>Translation: getting the agent to actually use codegraph_trace instead of falling back to Read is an unsolved problem outside what the MCP server can control. The Excalidraw worked example shows the trace-first steering improved best-run to 3 codegraph / 0 reads / 0 greps / 51s vs the unsteered 3–10 codegraph / 0–2 reads / 0–4 greps / 64–112s — but the steering had to land at the CLI prompt level, not in the MCP server. The MCP server alone can't make Claude Code call trace; that depends on the host model's tool-choice behavior, which improves on its own as models get better at tool use but is not the maintainer's lever.</p>
+        <p>Bus factor is real. git shortlog -sn against the 377-commit history: Colby McHenry 317, Olaf Monien 16, andreinknv 7, everyone else ≤ 4. That's 92% of commits by one author over a 4-month project history. Compare to Mem0's 200+ contributors over three years; CodeGraph is one engineer's vision shipped fast.</p>
+        <p>Release cadence is "still finding shape". 12 releases in the public history (v0.7.6 → v0.9.6), with v0.9.0 (2026-05-21) → v0.9.6 (2026-05-27) = 7 releases in 7 days. That's healthy for a v0.x project, but if your CI pins a specific version, expect to bump it weekly.</p>
+        <p>Local-only is a feature, but it also caps the ceiling. No embeddings, no semantic search, no LLM-derived nodes. Search is FTS5 + name/qualified-name LIKE matching with a small field-qualified DSL (kind:function lang:python authenticate — src/search/query-parser.ts L1-30). That's fine for "how does X reach Y" but the project quietly disclaims semantic gaps: the mcp_context tool description ends with "NOTE: provides CODE context, not product requirements; for new features still clarify UX/edge cases with the user" (src/mcp/tools.ts L385).</p>
+        <p>SQLite WAL isn't free everywhere. README L564-568:</p>
+        <div class="callout"><p>codegraph status shows Journal: other than wal — WAL couldn't be enabled on this filesystem (common on network shares and WSL2 /mnt), so reads can block on writes. Move the project (with its .codegraph/ folder) onto a local disk.</p></div>
+        <p>If your repo lives on WSL2's /mnt/c/... mount or a corporate SMB share, the daemon model can stall. Known issue, documented, but a real ceiling on the "100% local" claim.</p>
+        <p>203 open issues against 31k stars. That ratio is healthy for an active project; the open ones I sampled (#525 watcher behavior, #524 ReScript request, #517 watcher fd leak on nested .git, #516 non-ASCII keyword extraction, #518 sub-directory invocation) are mostly real edge cases on real codebases rather than fundamental design problems. The triage discipline visible in the closed PRs (issue numbers in every commit message) is encouraging.</p>
+
+        <h2>5 · Verdict — who should install this today</h2>
+        <p>Two strong yeses, two reasonable nos, four things to watch.</p>
+
+        <h3>5.1 Two strong yeses</h3>
+        <h4>Solo developers on a non-trivial repo</h4>
+        <p>If you're using Claude Code, Cursor, or Codex on any repo over ~500 files, the default agent fans out 20–80 tool calls for any architecture question; CodeGraph drops that to 3–10. On a TypeScript or Rust monorepo the savings are immediate and obvious.</p>
+        <pre><code>curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh &amp;&amp; codegraph init -i</code></pre>
+        <p>is two minutes of work. The license is MIT, the data never leaves your machine, the worst case is you uninstall it.</p>
+        <h4>Tooling teams evaluating AI-native code intelligence</h4>
+        <p>The pattern of "tree-sitter graph + adaptive output budgets + dynamic-dispatch synthesizers + provenance-tagged edges" is the right shape, and CodeGraph's source — particularly src/mcp/tools.ts and callback-synthesizer.ts — is some of the most clearly-commented MCP-server code in the open-source ecosystem.</p>
+        <p>MIT license means you can lift the patterns.</p>
+
+        <h3>5.2 Two reasonable nos</h3>
+        <h4>Teams wanting semantic search</h4>
+        <p>"Find me code that does X" where X is a concept, not a name — CodeGraph doesn't do that. It's FTS5 + name matching + structural edges.</p>
+        <p>If you want vector retrieval over code, use Aider's repo-map, Continue's @codebase, Cursor's built-in embeddings index, or hosted offerings like Sourcegraph Cody.</p>
+        <h4>Multi-developer / multi-machine indexing</h4>
+        <p>The whole architecture is "one daemon per user per machine." There's no central index server, no shared .codegraph/ mode, no team-scope.</p>
+        <p>A team of ten engineers indexing the same monorepo ten times is the design — fine on individual laptops, wasteful on shared dev infra.</p>
+
+        <h3>5.3 What to watch out for</h3>
+        <ul>
+          <li>Pin your version. npx @colbymchenry/codegraph@0.9.6 rather than npx @colbymchenry/codegraph; the release cadence guarantees you'll hit a transient bug if you don't.</li>
+          <li>Check codegraph status after install. If Journal: reports anything other than wal, move your .codegraph/ to a local disk.</li>
+          <li>Disable on tiny repos. The Gin (110-file) cell in the 37-cell A/B shows the MCP overhead doesn't amortize. codegraph uninit is one command.</li>
+          <li>Don't expect the agent to always pick codegraph_trace. The maintainer's own notes say tool-choice steering is fragile; on some sessions the model will still fan out into Reads. That's an LLM limitation, not a CodeGraph one, but it's where the gain variance comes from.</li>
+        </ul>
+
+        <h2>6 · Alternatives — fair side-by-side</h2>
+        <p>The honest read of where CodeGraph sits versus the other 2026 contenders.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Dimension</th><th>CodeGraph</th><th>Serena</th><th>CodeGraphContext</th><th>codebase-memory-mcp</th><th>Aider (repo-map)</th></tr></thead>
+            <tbody>
+              <tr><td>Shape</td><td>MCP server + CLI</td><td>MCP server + edit tools</td><td>MCP server + CLI</td><td>MCP server, single binary</td><td>In-process repo-map inside a chat agent</td></tr>
+              <tr><td>Stars (May 2026)</td><td>31.0K</td><td>24.7K</td><td>3.5K</td><td>2.8K</td><td>45.5K</td></tr>
+              <tr><td>Created</td><td>2026-01-18 (4 mo)</td><td>mid-2025</td><td>early 2026</td><td>early 2026</td><td>2023</td></tr>
+              <tr><td>Primary language</td><td>TypeScript</td><td>Python</td><td>Python</td><td>C</td><td>Python</td></tr>
+              <tr><td>License</td><td>MIT</td><td>MIT</td><td>MIT</td><td>MIT</td><td>Apache-2.0</td></tr>
+              <tr><td>Storage</td><td>SQLite (FTS5, WAL)</td><td>Language-server in-mem + cache</td><td>Graph DB</td><td>Custom binary index</td><td>In-memory tree-sitter map</td></tr>
+              <tr><td>Languages claimed</td><td>20 (tree-sitter)</td><td>~25 (LSP-backed)</td><td>~10</td><td>155</td><td>100+ (tree-sitter tags)</td></tr>
+              <tr><td>Dynamic-dispatch synthesizers</td><td>Yes — 11 channels</td><td>No (relies on LSP refs)</td><td>No</td><td>No (claims, unverified)</td><td>No</td></tr>
+              <tr><td>Framework-aware routes</td><td>21 frameworks</td><td>LSP-dependent</td><td>Limited</td><td>No</td><td>No</td></tr>
+              <tr><td>Auto-sync on file change</td><td>Yes, with staleness banner</td><td>LSP-driven</td><td>Manual</td><td>Manual</td><td>Each turn, full re-walk</td></tr>
+              <tr><td>Bundled runtime</td><td>Yes (Node included)</td><td>No (Python + uv)</td><td>No (Python)</td><td>Yes (static binary)</td><td>No (Python)</td></tr>
+              <tr><td>Multi-agent installer</td><td>Yes — 8 targets</td><td>Claude / Cursor / Codex (manual config)</td><td>Manual config</td><td>Manual config</td><td>N/A (built-in)</td></tr>
+              <tr><td>MCP trace between two symbols</td><td>Yes — caps at 7 hops, inlines bodies</td><td>No</td><td>No</td><td>Partial</td><td>No</td></tr>
+              <tr><td>Reproducible A/B benchmark in-repo</td><td>Yes — 7×7 + 37-cell matrix</td><td>No</td><td>No</td><td>Performance claims, no script</td><td>No</td></tr>
+              <tr><td>Test count</td><td>~989 cases, ~19k lines</td><td>~150 cases</td><td>~50 cases</td><td>Unknown</td><td>~3,000 cases (whole project)</td></tr>
+              <tr><td>Sole-author percentage</td><td>92%</td><td>~70%</td><td>~80%</td><td>Unknown</td><td>Founder + ~50 contribs</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Honest read: if you want a standalone code-intelligence MCP server for Claude Code, the choice in 2026 is CodeGraph vs Serena. Serena leans on LSP for cross-references, which is more accurate for languages with mature language servers (TypeScript, Python, Rust, Go) but adds a dependency on installed toolchains and is weaker on cross-language flows. CodeGraph leans on tree-sitter, which gives uniform coverage across 20 languages with one runtime and adds the synthesizer layer for dynamic-dispatch — at the cost of being heuristic where the LSP would be authoritative. The right choice depends on whether your repo is one language (Serena) or many (CodeGraph). Aider is an apples-to-oranges comparison — it's a chat agent that happens to ship a repo-map, not a tool you bolt onto Claude Code.</p>
+      </div>
+
+      <nav class="post-nav">
+        <a href="../blog.html">← All writing</a>
+        <a href="./headroom.html">Headroom →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

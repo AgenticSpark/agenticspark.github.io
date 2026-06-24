@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MLflow · the ML lifecycle platform — Ethan</title>
+  <meta name="description" content="A STAR analysis of MLflow: the open-source platform for experiment tracking, model packaging, registry workflows, and a fast-moving GenAI layer for tracing, evaluation, prompts, and gateway deployments." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/mlflow.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="MLflow · the ML lifecycle platform" />
+  <meta property="og:description" content="The open-source ML and GenAI lifecycle platform — tracking server, backend store, artifact store, model format, registry, tracing, evaluation, prompts, and where the breadth becomes an ops tax." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/mlflow.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="MLflow · the ML lifecycle platform" />
+  <meta name="twitter:description" content="Experiment tracking, model registry, pyfunc packaging, OpenTelemetry tracing, GenAI evaluation, and the honest caveats of a broad MLOps platform." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">ML lifecycle · STAR analysis</span>
+        <h1 class="post-title">MLflow</h1>
+        <p class="post-dek">The open-source platform that gave machine-learning teams a shared language for experiments, artifacts, models, and promotion workflows before most companies had an MLOps team. Its center of gravity is still practical: log the run, save the model, register a version, serve or hand it to another system. The interesting 2026 version is wider: MLflow now wants to be an AI engineering platform for agents and LLM applications too, with <em>OpenTelemetry-compatible tracing</em>, GenAI evaluation, prompt registry, and AI Gateway. The breadth is useful, but it is also the main caveat: at scale the tracking server, SQL backend, object store, UI, and rapidly moving GenAI surface become real infrastructure to operate.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Repo</dt><dd><a href="https://github.com/mlflow/mlflow" target="_blank" rel="noopener">mlflow/<wbr>mlflow</a></dd></div>
+        <div><dt>License</dt><dd>Apache-2.0</dd></div>
+        <div><dt>Stack</dt><dd>Python · Java · JS/React</dd></div>
+        <div><dt>Version</dt><dd>v3.14.0</dd></div>
+        <div><dt>Stars</dt><dd>~26.7K · 5.9K forks</dd></div>
+        <div><dt>Reviewed</dt><dd>Jun 2026</dd></div>
+      </dl>
+
+      <div class="prose">
+        <h2>In short</h2>
+        <p>MLflow is the pragmatic default for teams that need one open protocol-ish place to record experiments, package models, register versions, and now observe LLM/agent systems.</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>What it is</h4>
+            <p>An Apache-2.0 platform for the end-to-end ML lifecycle: <strong>Tracking</strong> for runs, params, metrics, artifacts, traces, and autologging; <strong>Projects</strong> for reproducible execution; <strong>Models</strong> for flavor-based packaging around an <code>MLmodel</code> file; and <strong>Model Registry</strong> for versions, aliases, tags, lineage, and promotion workflows. The core runtime is Python, with Java, R, and TypeScript/JavaScript clients plus a React-heavy UI.</p>
+          </div>
+          <div class="callout">
+            <h4>Why it's interesting</h4>
+            <p>MLflow won because it meets teams where they are. You can add <code>mlflow.start_run()</code>, <code>mlflow.log_metric()</code>, or framework autologging to a notebook today; later point it at a shared tracking server backed by PostgreSQL/MySQL and S3/GCS/Azure Blob; later register the artifact as <code>models:/name@champion</code>. The same mental model now extends to traces, prompts, judges, and gateway endpoints.</p>
+          </div>
+          <div class="callout">
+            <h4>Biggest concerns</h4>
+            <p>The open-source pieces are broad rather than deep. The tracking server can become a production service with database tuning, artifact-store credentials, retention, trace archival, and UI scaling concerns. The MLflow Model format is useful but opinionated, and does not fit every deployment target. The GenAI pivot is real and useful, but it is moving quickly enough that APIs, UI affordances, and best practices still feel like they are settling.</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">v3.14</span><span class="label">Latest release checked</span></div>
+          <div class="stat"><span class="num">26.7K</span><span class="label">Stars · 5.9K forks</span></div>
+          <div class="stat"><span class="num">4</span><span class="label">Classic pillars: Tracking, Projects, Models, Registry</span></div>
+          <div class="stat"><span class="num">OTel</span><span class="label">OpenTelemetry-compatible tracing</span></div>
+          <div class="stat"><span class="num">2.0K</span><span class="label">Open issues · fast-moving surface</span></div>
+        </div>
+
+        <div class="callout accent">
+          <h4>Verdict</h4>
+          <p>MLflow is still the most useful open-source baseline for ML lifecycle plumbing: it is easy to start locally, understandable to data scientists, and portable enough to survive a move from notebooks to a platform team. Adopt it when you need a shared experiment ledger, model artifact convention, and registry workflow more than you need the most polished SaaS UI or the deepest workflow orchestrator. But treat the tracking server as infrastructure, not a toy process; decide early who owns the backend database, artifact bucket, retention policy, and auth boundary. For GenAI work, use the tracing and evaluation features, but pin versions and expect the product shape to change.</p>
+        </div>
+
+        <h2>1 · Situation — untracked experiments, irreproducible models, no registry</h2>
+        <p>The original MLflow problem was mundane and painful: every ML team had too many notebooks, too many slightly different training scripts, too many model files named <code>final_v7.pkl</code>, and no reliable way to answer which run produced the model currently serving users.</p>
+        <p>Classic software systems already had source control, package managers, CI logs, artifact repositories, and deploy history. ML had pieces of that, but the workflow crossed notebooks, local files, cloud buckets, distributed jobs, Python environments, hyperparameter sweeps, and manual handoffs. The result was a lineage gap. A model artifact might exist in S3, but the exact params, metrics, code version, input schema, environment, and promotion decision were scattered across Slack, a notebook cell, or someone's memory.</p>
+        <p>The second problem was collaboration. One researcher could log results locally, but teams needed a shared service where multiple clients could record runs and inspect each other's results. That service had to be boring enough for a single laptop and configurable enough for a platform deployment. MLflow's enduring design is the split between run metadata in a <strong>backend store</strong> and larger blobs in an <strong>artifact store</strong>, fronted by a tracking server and UI.</p>
+        <p>By 2026, the same failure mode appears in LLM and agent applications. Prompts mutate, tools change, retrieval paths branch, outputs depend on provider behavior, and debugging requires step-level traces rather than one scalar accuracy. MLflow's answer is to extend the old ledger into traces, assessments, evaluation datasets, prompt versions, and gateway usage.</p>
+
+        <h2>2 · Task — make the ML lifecycle explicit without owning every runtime</h2>
+        <p>The task is not to become the training framework, the orchestrator, the model server, the feature store, and the observability vendor all at once. The task is to define durable handoff points.</p>
+        <ol>
+          <li><strong>Record experiments</strong> in a queryable store: runs, params, metrics, tags, artifacts, source metadata, and now traces.</li>
+          <li><strong>Package models</strong> in a common directory format so downstream tools can load them through a known flavor, especially <code>python_function</code> / <code>pyfunc</code>.</li>
+          <li><strong>Promote versions</strong> through a registry with lineage, aliases, tags, and human-readable annotations.</li>
+          <li><strong>Reproduce execution</strong> through Projects and environment files when code needs to be run again elsewhere.</li>
+          <li><strong>Observe GenAI systems</strong> with OpenTelemetry-compatible spans, evaluations, prompt versions, and gateway endpoints.</li>
+        </ol>
+        <p>This is why MLflow remains valuable even in stacks that use Airflow, Kubeflow, Databricks, SageMaker, Vertex, or a custom serving layer. It is often the ledger between those systems, not the only system.</p>
+
+        <h2>3 · Action — what's actually in the platform</h2>
+        <p>Six lenses: tracking, model packaging, registry, reproducible projects, GenAI tracing/evaluation, and the prompt/gateway/deployment layer.</p>
+
+        <h3>3.1 Tracking &amp; autologging</h3>
+        <p>MLflow Tracking is the center. A client starts a run with <code>mlflow.start_run()</code>, logs params with <code>mlflow.log_param()</code>, metrics with <code>mlflow.log_metric()</code>, files with <code>mlflow.log_artifact()</code>, and models with flavor-specific helpers such as <code>mlflow.sklearn.log_model()</code> or <code>mlflow.pyfunc.log_model()</code>. The tracking server exposes REST endpoints and the UI; clients connect through <code>MLFLOW_TRACKING_URI</code> or <code>mlflow.set_tracking_uri()</code>.</p>
+        <p>The architecture is intentionally split. The <strong>backend store</strong> holds structured metadata: experiments, runs, params, metrics, tags, model registry records, and increasingly trace metadata. SQLite is the default local path; production deployments usually move to PostgreSQL or MySQL. The <strong>artifact store</strong> holds larger files: model directories, plots, datasets, and arbitrary run artifacts. That store may be local disk, S3, GCS, Azure Blob, or another artifact repository. The tracking server can proxy artifact access with <code>--artifacts-destination</code>, or the client can access object storage directly with <code>--no-serve-artifacts</code> and <code>--default-artifact-root</code>.</p>
+        <p>Autologging is the adoption accelerant. Calls like <code>mlflow.sklearn.autolog()</code>, <code>mlflow.pytorch.autolog()</code>, and newer provider/framework hooks can capture parameters, metrics, models, and traces without rewriting the training loop. This is exactly why MLflow spreads inside organizations: it starts as three lines in a notebook, then becomes the record of truth.</p>
+
+        <figure class="diagram"><svg viewBox="0 0 760 520" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahmlf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aamlf" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="40" y="56" width="170" height="72" rx="8" class="d-box"/><text x="125" y="85" text-anchor="middle" class="d-title">Training run</text><text x="125" y="108" text-anchor="middle" class="d-sub">params · metrics · artifacts</text>
+        <line x1="210" y1="92" x2="276" y2="92" class="d-edge-accent" marker-end="url(#aamlf)"/>
+        <rect x="276" y="38" width="210" height="108" rx="8" class="d-box-accent"/><text x="381" y="70" text-anchor="middle" class="d-title">Tracking server</text><text x="381" y="93" text-anchor="middle" class="d-sub">REST API · UI · auth boundary</text><text x="381" y="116" text-anchor="middle" class="d-sub">mlflow server</text>
+        <line x1="356" y1="146" x2="274" y2="224" class="d-edge" marker-end="url(#ahmlf)"/>
+        <line x1="406" y1="146" x2="488" y2="224" class="d-edge" marker-end="url(#ahmlf)"/>
+        <rect x="116" y="224" width="206" height="76" rx="8" class="d-box"/><text x="219" y="254" text-anchor="middle" class="d-title">Backend store</text><text x="219" y="277" text-anchor="middle" class="d-sub">PostgreSQL · MySQL · SQLite</text>
+        <rect x="438" y="224" width="206" height="76" rx="8" class="d-box"/><text x="541" y="254" text-anchor="middle" class="d-title">Artifact store</text><text x="541" y="277" text-anchor="middle" class="d-sub">S3 · GCS · Azure Blob · disk</text>
+        <line x1="486" y1="92" x2="552" y2="92" class="d-edge-accent" marker-end="url(#aamlf)"/>
+        <rect x="552" y="56" width="168" height="72" rx="8" class="d-box"/><text x="636" y="85" text-anchor="middle" class="d-title">Model Registry</text><text x="636" y="108" text-anchor="middle" class="d-sub">versions · aliases · lineage</text>
+        <line x1="636" y1="128" x2="636" y2="188" class="d-edge" marker-end="url(#ahmlf)"/>
+        <rect x="552" y="188" width="168" height="72" rx="8" class="d-box"/><text x="636" y="217" text-anchor="middle" class="d-title">Deployment</text><text x="636" y="240" text-anchor="middle" class="d-sub">serving · batch · gateway</text>
+        <path d="M125 128 C125 380 636 384 636 260" fill="none" class="d-edge" stroke-dasharray="5 4" marker-end="url(#ahmlf)"/>
+        <text x="344" y="404" text-anchor="middle" class="d-elabel">run lineage stays attached to model versions and deployments</text>
+        </svg><figcaption><b>The durable split.</b> MLflow's tracking server records structured metadata in a backend store and files in an artifact store; the registry then points deployable model versions back to the runs that produced them.</figcaption></figure>
+
+        <h3>3.2 the MLflow Model format + pyfunc</h3>
+        <p>An MLflow Model is a directory convention, not a single serialization format. The root contains an <code>MLmodel</code> YAML file that declares one or more <strong>flavors</strong>. A scikit-learn model can be loadable as <code>mlflow.sklearn</code> for sklearn-aware code and also as <code>python_function</code> for generic inference. The same directory usually carries dependency metadata such as <code>conda.yaml</code>, <code>python_env.yaml</code>, <code>requirements.txt</code>, input examples, signatures, and environment-variable names used during inference.</p>
+        <p>The key abstraction is <code>pyfunc</code>. If a deployment tool can call <code>mlflow.pyfunc.load_model()</code> and invoke <code>predict()</code>, it can serve models from many libraries without knowing each library's native object model. That is a good portability story for batch scoring, REST wrappers, and platform handoffs. The caveat is also obvious: pyfunc is a Python packaging contract. If your production path is a hand-optimized C++ runtime, ONNX/TensorRT graph, JVM service, or a feature-rich custom microservice, MLflow's model directory may be metadata around the real deployable artifact rather than the deployable artifact itself.</p>
+
+        <h3>3.3 Model Registry &amp; stages/aliases</h3>
+        <p>The Model Registry turns logged model artifacts into named model versions. A registered model has versions, tags, descriptions, aliases, and lineage back to the producing run or logged model. The modern docs emphasize <strong>aliases</strong>: a URI like <code>models:/FraudModel@champion</code> can point production traffic at a mutable named version, then be reassigned after validation. Older stage transitions such as Staging and Production still describe a familiar promotion workflow in many installations, but aliases are the cleaner deployment primitive.</p>
+        <p>The registry is most valuable when it is used as a coordination point, not as a trophy shelf. A good version has a signature, an input example, metrics, a link to the run, tags for validation state, and a clear alias or deployment intent. Otherwise it becomes another folder of artifacts with a nicer UI.</p>
+
+        <h3>3.4 Projects/reproducibility</h3>
+        <p>MLflow Projects package code for repeatable execution. A project can be a local directory or Git repo with an <code>MLproject</code> file defining entry points, parameters, and an environment. It can use <code>python_env.yaml</code>, Conda, Docker, or the local environment; <code>mlflow run</code> can execute a default script or a named entry point with typed parameters. Backends include local execution, Databricks, and Kubernetes-style job submission.</p>
+        <p>This is the least fashionable pillar but it captures a useful principle: reproducibility is not only the model artifact. It is also the command, parameters, environment, and code location that generated it. In practice, many teams use Airflow, Dagster, Argo, Kubeflow, or managed platform jobs for orchestration and still let MLflow record the runs. That is fine. Projects are a portable baseline, not a requirement to centralize every workflow inside MLflow.</p>
+
+        <h3>3.5 GenAI tracing (OpenTelemetry) &amp; mlflow.evaluate</h3>
+        <p>The newer MLflow is openly aimed at agents and LLM applications. Tracing captures nested spans for model calls, retrievers, tools, chains, and agent steps; MLflow describes the implementation as OpenTelemetry-compatible and aligned with GenAI semantic conventions. APIs such as <code>mlflow.start_span()</code>, <code>mlflow.start_trace()</code>, framework autologging like <code>mlflow.openai.autolog()</code>, and the lighter <code>mlflow-tracing</code> package make the old tracking server an observability sink for LLM behavior.</p>
+        <p>Evaluation now spans two worlds. Classic <code>mlflow.evaluate()</code> covers model evaluation tied to runs and datasets. The GenAI layer adds <code>mlflow.genai.evaluate()</code>, scorer objects such as correctness or guideline judges, evaluation datasets, trace-linked feedback, review queues, and even pytest-style regression hooks in recent releases. That is the right shape: LLM quality is not one held-out accuracy number; it is traces, examples, expectations, human feedback, judge outputs, and regression history tied together.</p>
+        <p>The concern is maturity under velocity. The v3.14.0 release notes are dominated by agent onboarding, Claude Code tracing, review queues, evaluation dataset UI, pytest regression testing, Prompt Playground, trace APIs, and gateway updates. Useful features, but also a sign that the GenAI product surface is changing quickly.</p>
+
+        <h3>3.6 prompt registry / AI Gateway / deployments</h3>
+        <p>The Prompt Registry applies registry ideas to prompt templates. Prompts have versions, commit messages, tags, aliases, template variables, chat-message forms, Jinja2 support, response formats, and optional model config. APIs such as <code>mlflow.genai.register_prompt()</code> and <code>mlflow.genai.load_prompt()</code> let applications load <code>prompts:/name/version</code> or an alias rather than hard-code prompt text in the app. The LLM Playground then lets a team test registered prompts against gateway endpoints.</p>
+        <p>The AI Gateway is the provider abstraction: one organization-controlled endpoint in front of OpenAI, Anthropic, and other providers, with centralized key management, request/response logging, routing, traffic splitting, fallbacks, and passthrough endpoints. The broader deployment story still includes <code>mlflow deployments</code>, Docker/Kubernetes/cloud targets, and loading registered model URIs from serving systems. The strongest interpretation is not that MLflow replaces every serving stack; it gives you named, versioned, auditable inputs to those stacks.</p>
+
+        <h2>4 · Result — what you get when you deploy it</h2>
+        <p>Each pillar mapped to what it delivers in practice, and where it bites.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Pillar</th><th>What it buys you</th><th>Honest caveat</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Tracking</td><td>Shared run ledger for params, metrics, artifacts, tags, traces, and UI comparison</td><td>Server, DB, artifact credentials, retention, and auth become ops work</td></tr>
+              <tr><td>Models / pyfunc</td><td>Common flavor directory with signatures, dependencies, and generic Python inference</td><td>Opinionated packaging; not every production runtime wants Python or pyfunc</td></tr>
+              <tr><td>Model Registry</td><td>Versioned models with lineage, aliases, tags, descriptions, and promotion workflows</td><td>Governance discipline is external; bad metadata still produces bad registry entries</td></tr>
+              <tr><td>Projects</td><td>Runnable code packages with entry points, parameters, and environments</td><td>Often superseded by dedicated orchestrators in larger platforms</td></tr>
+              <tr><td>GenAI tracing/eval</td><td>OpenTelemetry-compatible traces, judge scores, feedback, datasets, and regression tests</td><td>Fast-moving API/UI surface; high trace volume stresses storage and UI</td></tr>
+              <tr><td>Prompt/Gateway</td><td>Versioned prompts and a controlled endpoint for provider access, routing, logging, and cost policy</td><td>You still need secrets, policy, latency, and provider-failure ownership</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The result is not magic MLOps. It is a set of durable conventions that prevent the worst failure: a model or agent behavior exists in production and nobody can reconstruct how it was created, evaluated, or promoted.</p>
+
+        <h2>5 · Takeaways — how to read MLflow in 2026</h2>
+        <p>Five calibrated conclusions for engineers choosing a lifecycle stack.</p>
+        <h4>Use it as the system of record</h4>
+        <ul>
+          <li><strong>Tracking is the anchor.</strong> If you adopt only one part, make it the shared tracking server with a real backend database and durable artifact store.</li>
+          <li><strong>Log enough metadata to make decisions later.</strong> Params and metrics are table stakes; signatures, input examples, tags, dataset references, and source links are what make runs useful six months later.</li>
+          <li><strong>Aliases beat tribal promotion.</strong> A named <code>champion</code> alias is clearer than a wiki page saying which version is live.</li>
+        </ul>
+        <h4>Budget for operations early</h4>
+        <ul>
+          <li><strong>SQLite is not your production plan.</strong> Use PostgreSQL or MySQL for shared/high-concurrency tracking and understand artifact proxy vs direct-access tradeoffs.</li>
+          <li><strong>Retention is a product decision.</strong> Metrics are small; artifacts and traces are not. Decide what gets archived, deleted, or moved before the UI slows down.</li>
+          <li><strong>Secure the server boundary.</strong> Artifact proxying can effectively grant server-side access to all artifacts the server can reach; that is convenient and sensitive.</li>
+        </ul>
+        <h4>Do not overread the model format</h4>
+        <p>The MLflow Model format is excellent for Python-centric handoffs and standardized metadata. It is not proof that your serving runtime, dependency sandbox, feature lookup, or GPU kernel path is production-ready. Treat it as a contract to test, not a deployment guarantee.</p>
+        <h4>GenAI makes the platform more relevant and less settled</h4>
+        <p>Tracing, evaluation datasets, judge scorers, prompts, review queues, and gateway routing are exactly the missing ledger for LLM apps. But the release cadence is rapid. Pin MLflow, read release notes, and isolate your instrumentation behind a small internal wrapper if you are building long-lived agent infrastructure.</p>
+        <h4>Breadth is the point and the tax</h4>
+        <p>MLflow is rarely the best single-purpose tracker, registry, evaluator, prompt tool, gateway, or orchestrator. Its value is that the pieces know about each other. The tax is that each piece has enough surface area to disappoint specialists.</p>
+
+        <h2>6 · vs Alternatives</h2>
+        <p>Where MLflow sits in the 2026 MLOps and LLMOps landscape.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Option</th><th>What it is</th><th>Relative to MLflow</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Weights &amp; Biases</td><td>Hosted-first experiment tracking, sweeps, reports, artifacts, model registry, LLM traces</td><td>Usually better UX and collaboration polish; less open/self-host-neutral as a default baseline</td></tr>
+              <tr><td>DVC</td><td>Git-shaped data/model versioning and pipeline reproducibility</td><td>Stronger for data lineage and repo-native workflows; MLflow is stronger for live tracking UI and registry conventions</td></tr>
+              <tr><td>Kubeflow</td><td>Kubernetes-native ML platform with pipelines, training operators, serving pieces</td><td>Much heavier and more platform-complete; MLflow is lighter and often complements it as tracking/registry</td></tr>
+              <tr><td>Metaflow</td><td>Pythonic workflow framework for data science pipelines</td><td>Better developer experience for DAGs and execution; MLflow has broader tracking/model registry adoption</td></tr>
+              <tr><td>SageMaker/Vertex</td><td>Managed cloud ML platforms with jobs, registry, deployment, monitoring</td><td>Deeper cloud integration and governance; MLflow is more portable and vendor-neutral, but you operate more yourself</td></tr>
+              <tr><td>ClearML</td><td>Open-source/commercial experiment manager, orchestration, data, and model registry</td><td>More integrated as an all-in-one platform; MLflow has wider ecosystem recognition and simpler incremental adoption</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <nav class="post-nav">
+        <a href="./langgraph.html">← LangGraph</a>
+        <a href="./delta.html">Delta Lake →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

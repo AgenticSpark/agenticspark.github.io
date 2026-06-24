@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenAI Evals · grading the models — Ethan</title>
+  <meta name="description" content="A STAR analysis of OpenAI Evals: the benchmark registry and evaluation framework that helped popularize datasets-as-code, completion functions, and model-graded LLM evaluation." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/evals.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="OpenAI Evals · grading the models" />
+  <meta property="og:description" content="Historically pivotal, now often superseded: what OpenAI Evals got right about reproducible LLM evaluation, and where the old harness shows its age." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/evals.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="OpenAI Evals · grading the models" />
+  <meta name="twitter:description" content="The open registry, completion functions, and model-graded pattern that shaped LLM evaluation." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">LLM evaluation · STAR analysis</span>
+        <h1 class="post-title">OpenAI Evals</h1>
+        <p class="post-dek">The repo that made LLM evaluation feel like something you could share, review, and rerun instead of a private spreadsheet of vibes. Released in the GPT-4 moment, OpenAI Evals paired a Python harness with a large YAML/JSONL registry and made <em>model-graded</em> evals part of the mainstream vocabulary. It was historically pivotal: datasets-as-code, reusable grading templates, and completion functions all aged well. The honest 2026 reading is colder: the repository is comparatively low-activity, OpenAI/Completion-API-shaped, and often superseded by newer harnesses and hosted eval products.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Repo</dt><dd><a href="https://github.com/openai/evals" target="_blank" rel="noopener">openai/<wbr>evals</a></dd></div>
+        <div><dt>License</dt><dd>MIT</dd></div>
+        <div><dt>Stack</dt><dd>Python · YAML/JSONL registry</dd></div>
+        <div><dt>Version</dt><dd>3.0.1.post1 package · no GitHub releases</dd></div>
+        <div><dt>Stars</dt><dd>~18.7K · 3.0K forks</dd></div>
+        <div><dt>Reviewed</dt><dd>Jun 2026</dd></div>
+      </dl>
+
+      <div class="prose">
+        <h2>In short</h2>
+        <p>OpenAI Evals is best read as the canonical 2023 artifact of the first serious LLM-evaluation wave: imperfect, influential, and still full of durable patterns.</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>What it is</h4>
+            <p>A framework for evaluating LLMs and LLM systems, plus an open-source registry of benchmarks under <code>evals/registry/</code>. An eval is usually a YAML registration, a JSONL dataset, and an eval class such as <code>Match</code>, <code>Includes</code>, <code>FuzzyMatch</code>, or <code>ModelBasedClassify</code>. You run one eval with <code>oaieval</code> or a set with <code>oaievalset</code>.</p>
+          </div>
+          <div class="callout">
+            <h4>Why it's interesting</h4>
+            <p>It captured three ideas that became table stakes: keep evaluation data in versioned files, abstract the system under test behind a <code>CompletionFn</code>, and use another model as a grader when exact-match metrics are too brittle. In 2023, that was not boring infrastructure; it was the beginning of LLM evals as an engineering discipline.</p>
+          </div>
+          <div class="callout">
+            <h4>Biggest concerns</h4>
+            <p>The repo now feels semi-dormant relative to the field it helped create. The latest commits are mostly maintenance, the public GitHub releases list is empty, and the docs point users toward OpenAI's Dashboard Evals. Model-graded evals remain useful but inherit grader bias, variance, parsing fragility, and API cost.</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">2023</span><span class="label">Launched in the GPT-4 access window</span></div>
+          <div class="stat"><span class="num">MIT</span><span class="label">Code license; datasets have their own terms</span></div>
+          <div class="stat"><span class="num">18.7K</span><span class="label">Stars · 3.0K forks</span></div>
+          <div class="stat"><span class="num">210</span><span class="label">Open issues when reviewed</span></div>
+          <div class="stat"><span class="num">Apr 2026</span><span class="label">Most recent main-branch push observed</span></div>
+        </div>
+
+        <div class="callout accent">
+          <h4>Verdict</h4>
+          <p>Use OpenAI Evals to learn the patterns: datasets-as-code, registry-driven benchmark definitions, model-graded rubrics, and system-under-test abstraction. Do not automatically choose it for a new 2026 evaluation stack. For fresh production work, reach first for a modern harness or hosted product; come back to this repo when you need historical context, portable examples, or a compact mental model for what an eval actually is.</p>
+        </div>
+
+        <h2>1 · Situation — no shared, reproducible way to measure LLM quality</h2>
+        <p>Before the GPT-4 era, much of practical LLM evaluation was private, ad hoc, and conversational. Teams had prompt collections, demo scripts, favorite failure cases, or benchmark spreadsheets. They could say "the new model feels better at legal drafting" or "this prompt regressed on extraction," but the evidence often lived outside code review and outside repeatable automation.</p>
+        <p>Classic NLP benchmarks still mattered, but they did not cover the new workloads people were shipping: assistants following messy instructions, agents calling tools, summarizers preserving factual constraints, chain-of-thought prompts with variable surface forms, and applications where the expected answer was not a single string. The product question was not only "does the model know the answer?" It was "does this model, through this prompt or pipeline, satisfy the behavior my system depends on?"</p>
+        <p>OpenAI's release placed evals in the center of the GPT-4 story. The company asked the community for benchmark contributions and used high-quality evals as part of the path to prioritized GPT-4 API access. That incentive mattered because it made evaluation artifacts public. The repo was not just a tool; it was a social protocol for saying: here is my failure mode, here is data that captures it, here is code that scores it, and here is how you rerun it.</p>
+
+        <h2>2 · Task — turn LLM evaluation into reusable infrastructure</h2>
+        <p>The job was to make evals portable enough for a registry and flexible enough for real systems.</p>
+        <p>The design target was broader than "run MMLU." An eval needed to bind together a dataset, an implementation, a completion function, a recorder, and an aggregate report. The same harness had to support a simple exact-match quiz, a factuality rubric graded by another model, and a pipeline that wraps retrieval or a tool-using agent before returning text. That is the hard part: the unit under test is not always a model. Sometimes it is the full product path.</p>
+        <ol>
+          <li><strong>Make data concrete</strong> — store samples as JSONL and register evals in YAML so benchmark changes are reviewable.</li>
+          <li><strong>Separate judging from generation</strong> — call the system under test through a completion-function interface.</li>
+          <li><strong>Support brittle and fuzzy tasks</strong> — provide deterministic graders for constrained outputs and model-graded templates for open-ended outputs.</li>
+        </ol>
+
+        <h2>3 · Action — what's actually in the harness</h2>
+        <p>Six lenses: eval anatomy, deterministic templates, model-graded prompts, completion functions, the registry, and the unresolved problems.</p>
+
+        <h3>3.1 the eval anatomy: dataset JSONL + eval class</h3>
+        <p>The base abstraction is <code>evals.Eval</code> in <code>evals/eval.py</code>. Subclasses implement <code>eval_sample</code> and <code>run</code>. The base class loads samples through <code>get_samples()</code>, prefixes relative data paths with <code>evals/registry/data/</code>, shuffles deterministically with a fixed seed, and evaluates samples in a thread pool controlled by <code>EVALS_THREADS</code>.</p>
+        <p>A registry YAML entry maps a public eval name to an implementation class and arguments. The tiny <code>test-basic.yaml</code> example shows the shape: <code>test-includes.s1.simple-v0</code> points at <code>evals.elsuite.basic.includes:Includes</code> and passes <code>samples_jsonl: test_fuzzy_match/samples.jsonl</code>. The dataset row then carries fields such as <code>input</code> and <code>ideal</code>. That separation is the point: change data without changing code; reuse code across datasets.</p>
+
+        <figure class="diagram"><svg viewBox="0 0 760 430" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahev" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aaev" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="40" y="70" width="150" height="70" rx="8" class="d-box"/><text x="115" y="98" text-anchor="middle" class="d-title">Dataset</text><text x="115" y="120" text-anchor="middle" class="d-sub">JSONL samples</text>
+        <line x1="190" y1="105" x2="270" y2="105" class="d-edge" marker-end="url(#ahev)"/>
+        <rect x="270" y="70" width="190" height="70" rx="8" class="d-box-accent"/><text x="365" y="98" text-anchor="middle" class="d-title">Completion function</text><text x="365" y="120" text-anchor="middle" class="d-sub">model · agent · pipeline</text>
+        <line x1="460" y1="105" x2="540" y2="105" class="d-edge-accent" marker-end="url(#aaev)"/>
+        <rect x="540" y="40" width="170" height="70" rx="8" class="d-box"/><text x="625" y="68" text-anchor="middle" class="d-title">Basic eval</text><text x="625" y="90" text-anchor="middle" class="d-sub">match · includes</text>
+        <rect x="540" y="140" width="170" height="80" rx="8" class="d-box"/><text x="625" y="168" text-anchor="middle" class="d-title">Model-graded</text><text x="625" y="190" text-anchor="middle" class="d-sub">grader prompt</text>
+        <path d="M460 105 C500 105 500 75 540 75" fill="none" class="d-edge" marker-end="url(#ahev)"/>
+        <path d="M460 105 C500 105 500 180 540 180" fill="none" class="d-edge-accent" marker-end="url(#aaev)"/>
+        <line x1="625" y1="220" x2="625" y2="285" class="d-edge" marker-end="url(#ahev)"/>
+        <line x1="625" y1="110" x2="625" y2="285" class="d-edge" marker-end="url(#ahev)"/>
+        <rect x="500" y="286" width="250" height="70" rx="8" class="d-box-accent"/><text x="625" y="314" text-anchor="middle" class="d-title">Score / report</text><text x="625" y="336" text-anchor="middle" class="d-sub">metrics · JSONL events</text>
+        <path d="M115 140 C115 330 330 330 500 321" fill="none" class="d-edge" stroke-dasharray="5 4" marker-end="url(#ahev)"/>
+        <text x="285" y="350" text-anchor="middle" class="d-elabel">sample ids and logged records stay inspectable</text>
+        </svg><figcaption><b>The core loop.</b> JSONL data feeds the system under test through a completion function; an eval class scores the output with either deterministic logic or a model-graded rubric; the recorder emits per-sample events and aggregate metrics.</figcaption></figure>
+
+        <h3>3.2 basic/deterministic evals</h3>
+        <p>The basic templates are deliberately humble. <code>basic/match.py:Match</code> calls one completion function at temperature 0 and checks whether the sampled answer starts with one of the reference strings. <code>basic/includes.py:Includes</code> accepts an answer if any reference string appears in the completion. <code>basic/fuzzy_match.py:FuzzyMatch</code> handles looser containment-style matching; <code>basic/json_match.py:JsonMatch</code> compares parsed JSON while ignoring key order and whitespace outside values.</p>
+        <p>These are not glamorous metrics, but they are useful for the right shape of task: multiple choice, short factual QA, classification, extraction with constrained outputs, and regression tests for prompts that should produce a narrow answer. They also make an important engineering claim: if a deterministic scorer is sufficient, use it. Do not pay a grader model to create ambiguity you do not need.</p>
+
+        <h3>3.3 model-graded evals &amp; grading prompts</h3>
+        <p>The historically loud idea is the model-graded template. <code>modelgraded/classify.py:ModelBasedClassify</code> treats the last completion function as the grader, runs the policy model to produce a completion, formats a grading prompt, asks the grader for a constrained choice, and aggregates choices and scores. The registry under <code>evals/registry/modelgraded/</code> contains reusable grading specs such as <code>fact.yaml</code>, where a submitted answer is compared to an expert answer and classified into choices <code>A</code> through <code>E</code>.</p>
+        <p>This pattern solved a real problem: open-ended answers have many correct phrasings. A factual consistency answer can be a subset, superset, exact match, harmless paraphrase, or contradiction. Encoding that in string matching is brittle. Asking a strong model to apply a rubric can scale judgment across thousands of samples.</p>
+        <p>It also creates a new measurement problem. The grader is a model with its own biases, calibration drift, prompt sensitivity, and randomness. A model can over-reward eloquence, punish terse correct answers, miss domain-specific facts, or favor outputs shaped like its own training distribution. The evaluation prompt must force parseable choices, but parseable does not mean true. The repo made model grading practical; it did not make it epistemically free.</p>
+
+        <h3>3.4 completion functions / system-under-test abstraction</h3>
+        <p>The most durable engineering abstraction is the completion function. The docs describe a <code>CompletionFn</code> as a generalization of model completion: input is text or a chat conversation; output is a list of text completions. The implementation under test can be an OpenAI model, a LangChain LLM wrapper, a chain, a retrieval pipeline, or a tool-using system that does work before returning an answer.</p>
+        <p>That abstraction is why the repo is more interesting than an OpenAI benchmark runner. The CLI can instantiate an OpenAI chat model dynamically, but completion functions can also be registered in YAML under <code>evals/registry/completion_fns/</code>; the docs show <code>LangChainLLMCompletionFn</code> and a custom <code>MyCompletionFn</code> loaded via <code>--registry_path</code>. The concept aged well because modern evals still need to test systems, not just base models.</p>
+
+        <h3>3.5 the registry &amp; oaieval/oaievalset</h3>
+        <p>The registry is split across <code>evals/registry/evals/</code>, <code>evals/registry/data/</code>, <code>evals/registry/modelgraded/</code>, <code>evals/registry/completion_fns/</code>, and <code>evals/registry/eval_sets/</code>. The data directory is large enough that the README calls out Git LFS and selective pulls for individual eval datasets. This is not an incidental folder; it is the public corpus that made the project feel like a commons.</p>
+        <p><code>oaieval</code> takes a completion function and one eval name, for example <code>oaieval gpt-3.5-turbo test-match</code>. <code>oaievalset</code> runs a named set, uses environment variables such as <code>EVALS_THREADS</code> and <code>EVALS_THREAD_TIMEOUT</code>, and writes local progress so interrupted sets can resume. Local JSONL event logs are the default, with optional Snowflake logging for teams that want a warehouse-backed record.</p>
+
+        <h3>3.6 what it got right and what it left unsolved</h3>
+        <p>What it got right: evals are artifacts. Put the data in files. Put the scorer in code. Put the binding in a registry. Make the system under test swappable. Record per-sample events so people can inspect failures instead of trusting one aggregate number. Those are still the right instincts.</p>
+        <p>What it left unsolved: grader reliability, benchmark contamination, cost control, UI, experiment comparison, trace-level debugging, dataset governance, and modern chat/tool abstractions. The code also carries the shape of its era: OpenAI API assumptions, completion-oriented interfaces, many optional dependencies, and docs that now explicitly say you can configure and run Evals directly in the OpenAI Dashboard. The old repo is a seed crystal, not the current end state.</p>
+
+        <h2>4 · Result — what you get when you use it</h2>
+        <p>Each capability mapped to what it delivers in practice.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Capability</th><th>What it buys</th><th>Honest caveat</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Registry-driven evals</td><td>Shareable benchmark definitions in YAML + JSONL</td><td>Registry size helps discovery but does not guarantee benchmark quality</td></tr>
+              <tr><td>Basic templates</td><td>Cheap, deterministic scoring for constrained outputs</td><td>Breaks down quickly on open-ended or semantically equivalent answers</td></tr>
+              <tr><td>Model-graded templates</td><td>Automated judgment for subjective or variable responses</td><td>Bias, variance, parsing failures, and cost move into the grader</td></tr>
+              <tr><td>Completion functions</td><td>Evaluate models, chains, retrieval, or whole pipelines behind one interface</td><td>The interface still feels completion-era, not fully modern agent tracing</td></tr>
+              <tr><td>Local JSONL records</td><td>Inspectable per-sample logs instead of only leaderboard numbers</td><td>No polished dashboard or experiment-management layer by default</td></tr>
+              <tr><td>Open contribution model</td><td>Community could encode new failure modes as reusable evals</td><td>Open eval data can become stale, noisy, duplicated, or contaminated</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The result is a toolkit that still teaches the right primitive moves. It is less convincing as the default operational platform. If you need CI regression checks for a prompt, it can still do work. If you need multi-model dashboards, trace comparison, human review queues, or tight integration with current OpenAI hosted evals, you will probably outgrow it quickly.</p>
+
+        <h2>5 · Takeaways — historically pivotal, practically selective</h2>
+        <p>Five calibrated conclusions for engineers choosing an eval stack.</p>
+        <h4>Keep the dataset close to the code</h4>
+        <ul>
+          <li><strong>Version samples.</strong> JSONL is boring in the best way: diffable, reviewable, scriptable, and easy to sample for failure analysis.</li>
+          <li><strong>Make the scorer explicit.</strong> The class path in YAML is a contract. A score without a visible scorer is just a number with vibes attached.</li>
+          <li><strong>Log per-sample events.</strong> Aggregate accuracy is only useful after you inspect the rows that changed.</li>
+        </ul>
+        <h4>Use model grading, but distrust it professionally</h4>
+        <ul>
+          <li><strong>Validate the grader.</strong> Build metaevals or human spot checks for the rubric before treating it as truth.</li>
+          <li><strong>Pin grader models and prompts.</strong> A changing judge can manufacture regressions or hide real ones.</li>
+          <li><strong>Separate cost from confidence.</strong> More grader calls are not the same as better measurement if the rubric is under-specified.</li>
+        </ul>
+        <h4>Abstract the product path, not just the model</h4>
+        <p>The completion-function idea is still excellent. The system users experience is often prompt + retrieval + tools + guardrails + model. Evaluate that system as a unit, then drill down when it fails.</p>
+        <h4>Read activity as a product signal</h4>
+        <p>OpenAI Evals is not archived, but the public repo is low-activity relative to its peak and relative to modern alternatives. That matters if you are betting a new internal platform on it.</p>
+        <h4>Steal the lessons, not necessarily the stack</h4>
+        <p>The repo's durable contribution is conceptual: evaluation artifacts should be portable, inspectable, and reusable. In 2026, many teams should implement that lesson through newer harnesses.</p>
+
+        <h2>6 · vs Alternatives</h2>
+        <p>Where OpenAI Evals sits in the 2026 evaluation landscape.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Option</th><th>What it is</th><th>Relative to openai/evals</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>lm-evaluation-harness</td><td>EleutherAI's benchmark runner for language-model tasks</td><td>Stronger for standardized academic/open-model benchmark sweeps; less focused on product pipelines</td></tr>
+              <tr><td>HELM</td><td>Holistic evaluation framework from Stanford CRFM</td><td>More systematic reporting and scenario coverage; heavier and more benchmark-suite oriented</td></tr>
+              <tr><td>inspect-ai</td><td>Modern Python eval framework from UK AISI</td><td>Cleaner 2026 ergonomics for tasks, solvers, scorers, logs, and agentic evaluations</td></tr>
+              <tr><td>promptfoo</td><td>Developer-friendly prompt and LLM-app testing tool</td><td>Better fit for CI, prompt matrices, providers, and quick application regression tests</td></tr>
+              <tr><td>OpenAI Evals API/dashboard</td><td>Hosted OpenAI eval configuration and runs</td><td>The path OpenAI's own README now pushes; less open-registry-centric, more productized</td></tr>
+              <tr><td>Braintrust / LangSmith</td><td>Commercial eval, tracing, and observability platforms</td><td>Much better experiment management and human review workflows; less portable as pure open artifacts</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <nav class="post-nav">
+        <a href="./delta.html">← Delta Lake</a>
+        <a href="../blog.html">All writing →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

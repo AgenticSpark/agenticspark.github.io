@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LangGraph · stateful agent graphs — Ethan</title>
+  <meta name="description" content="A technical STAR analysis of LangGraph: stateful agent graphs, typed state, Pregel-style execution, durable checkpoints, human-in-the-loop interrupts, and where the framework overhead bites." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/langgraph.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="LangGraph · stateful agent graphs" />
+  <meta property="og:description" content="The low-level LangChain library for stateful, cyclic, durable LLM agent workflows — and when a plain loop is still the better architecture." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/langgraph.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="LangGraph · stateful agent graphs" />
+  <meta name="twitter:description" content="StateGraph, reducers, Pregel super-steps, checkpointers, interrupts, streaming, and the honest cost of graph-shaped agents." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">Agent orchestration · STAR analysis</span>
+        <h1 class="post-title">LangGraph</h1>
+        <p class="post-dek">LangGraph is the LangChain team's low-level answer to a problem every serious agent eventually hits: a useful agent is not a single prompt call, and not always a neat DAG. It is a loop with tools, retries, checkpoints, approvals, streaming, memory, and state that must survive between turns. The good idea is to make that control flow explicit as <em>graphs/state</em>, then run it with durable semantics. The tradeoff is equally real: if your agent is still a dozen lines of Python, LangGraph may be architecture before need.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Repo</dt><dd><a href="https://github.com/langchain-ai/langgraph" target="_blank" rel="noopener">langchain-ai/<wbr>langgraph</a></dd></div>
+        <div><dt>License</dt><dd>MIT</dd></div>
+        <div><dt>Stack</dt><dd>Python · TypeScript</dd></div>
+        <div><dt>Version</dt><dd>1.2.6 · stable</dd></div>
+        <div><dt>Stars</dt><dd>~35.5K · 6.0K forks</dd></div>
+        <div><dt>Reviewed</dt><dd>Jun 2026</dd></div>
+      </dl>
+
+      <div class="prose">
+        <h2>In short</h2>
+        <p>A graph runtime for agents that need explicit control flow, durable state, and human checkpoints — not just a prettier wrapper around an LLM call.</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>What it is</h4>
+            <p>An MIT-licensed, low-level orchestration library for building stateful, multi-actor LLM applications. In Python, the center is <code>StateGraph</code>: nodes are ordinary functions or runnables, edges choose what runs next, and a shared typed <code>State</code> carries updates across the graph. There is also a JS/TS port, <code>langgraphjs</code>. It lives in the LangChain ecosystem, but the docs and README are explicit: LangGraph can be used without LangChain.</p>
+          </div>
+          <div class="callout">
+            <h4>Why it's interesting</h4>
+            <p>It makes cycles a first-class feature. A ReAct agent is not a pipeline; it is "call model → maybe call tool → call model again → maybe stop." LangGraph models that directly with conditional edges, loops, reducers, checkpoints, interrupts, and streaming. The compiled graph runs on a Pregel-inspired runtime with super-steps, inactive/active nodes, and message passing, which gives the library a real execution model rather than just callback spaghetti.</p>
+          </div>
+          <div class="callout">
+            <h4>Biggest concerns</h4>
+            <p>The abstraction has gravity. You inherit graph vocabulary, checkpoint semantics, LangChain-adjacent dependencies, version churn, and a state-debugging model that is harder than reading a plain <code>while</code> loop. The open library is useful, but the polished deployment, Studio visualization, tracing, and hosted persistence story pulls toward LangSmith / LangGraph Platform. That boundary matters when teams adopt it as infrastructure.</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">1.2.6</span><span class="label">Latest PyPI / GitHub release checked</span></div>
+          <div class="stat"><span class="num">MIT</span><span class="label">Open-source license</span></div>
+          <div class="stat"><span class="num">35.5K</span><span class="label">Stars · ~6.0K forks</span></div>
+          <div class="stat"><span class="num">591</span><span class="label">Open issues · fast-moving API surface</span></div>
+          <div class="stat"><span class="num">v3</span><span class="label">Event streaming projection API in current docs</span></div>
+        </div>
+
+        <div class="callout accent">
+          <h4>Verdict</h4>
+          <p>LangGraph earns its keep when the workflow has durable state, branching, cycles, approval gates, retries, parallel actors, or a need to resume exactly where it stopped. It is a strong fit for production agents that are closer to small distributed systems than scripts. For a simple tool-calling bot, start with a plain loop or a higher-level agent factory; add LangGraph when the state machine is already there in your head and the framework lets you make it visible.</p>
+        </div>
+
+        <h2>First — a graph you can run</h2>
+        <p>LangGraph is easiest to grasp as a small state machine you assemble in code. Here is the canonical agent loop — a model node that either calls a tool or stops — in full:</p>
+        <pre><code>from typing import Annotated, TypedDict
+from langgraph.graph import StateGraph, START, END
+from langgraph.graph.message import add_messages
+
+class State(TypedDict):
+    messages: Annotated[list, add_messages]    # reducer: append, don't overwrite
+
+def agent(state: State):
+    return {"messages": [llm_with_tools.invoke(state["messages"])]}
+
+def route(state: State):                        # control flow is just a function
+    last = state["messages"][-1]
+    return "tools" if last.tool_calls else END
+
+builder = StateGraph(State)
+builder.add_node("agent", agent)
+builder.add_node("tools", tool_node)
+builder.add_edge(START, "agent")
+builder.add_conditional_edges("agent", route, {"tools": "tools", END: END})
+builder.add_edge("tools", "agent")             # the cycle: tool result returns to the agent
+graph = builder.compile()</code></pre>
+        <p>Running it streams each super-step's state update as the model and tools take turns:</p>
+        <pre><code>for step in graph.stream({"messages": [("user", "What is 17% of last month's revenue?")]}):
+    print(step)
+# {'agent': {'messages': [AIMessage(tool_calls=[{'name': 'lookup_revenue', ...}])]}}
+# {'tools': {'messages': [ToolMessage(content='revenue=842000')]}}
+# {'agent': {'messages': [AIMessage(content='17% of $842,000 is $143,140.')]}}</code></pre>
+        <p>Three things in that snippet are the whole framework: a <em>typed state</em> with a reducer, an <em>edge that is a function</em> of state, and a <em>cycle</em> from tool back to agent that a DAG could not express. Everything below is those three ideas plus a runtime that can persist and resume them.</p>
+
+        <h2>1 · Situation — agents stopped looking like chains</h2>
+        <p>The original LangChain mental model was a chain: take an input, transform it, call a model, parse the output, maybe call a tool. That shape worked for early demos and deterministic pipelines. It breaks down once the application has to keep operating after the first answer.</p>
+        <p>Real agents loop. The model proposes a tool call, the tool produces evidence, the model decides whether it has enough, a guardrail may reject the action, a human may approve it, and the run may need to pause for hours before resuming. A DAG can represent some of that with enough nodes, but DAG-only execution fights the shape of the problem. Retrying a failed step, returning from a tool to the same planner, or letting two specialist agents update shared context is easier to express as a cyclic graph than as a linear chain with hidden control flow.</p>
+        <p>The second pressure is durability. A chat assistant is not a stateless HTTP request once it can spend money, schedule work, modify tickets, or wait for a human. The state of the run has to be inspectable, persistable, replayable, and sometimes editable. That means a framework needs more than prompt templates; it needs a runtime, a state model, and a persistence model.</p>
+
+        <h2>2 · Task — make the control flow explicit without stealing the user's architecture</h2>
+        <p>LangGraph's task is narrow and ambitious: provide the low-level mechanics for long-running, stateful agents while leaving the nodes themselves as ordinary code.</p>
+        <p>The library does not require every node to be an LLM. A node can be a function, an agent, a tool wrapper, a validator, a retriever, a human approval gate, or deterministic business logic. Edges decide which node receives control next. State is a typed shared object, usually a <code>TypedDict</code>, dataclass, or Pydantic model. Reducers define how node updates are merged. The user still owns the architecture; LangGraph supplies the graph compiler, runtime, streaming surface, checkpoints, and resumability.</p>
+        <p>That design target explains both the appeal and the cost. LangGraph is lower-level than CrewAI-style role orchestration and lower-level than LangChain's new <code>create_agent</code>. It is not trying to hide the state machine. It is trying to make the state machine the product.</p>
+
+        <h2>3 · Action — how LangGraph actually works</h2>
+        <p>The implementation is easier to reason about if you separate the programming model from the runtime contract.</p>
+
+        <h3>3.1 StateGraph: nodes, edges, conditional edges, cycles</h3>
+        <p>A LangGraph application usually starts with <code>from langgraph.graph import StateGraph, START, END</code>. You instantiate <code>StateGraph(State)</code>, register nodes with <code>add_node</code>, connect fixed transitions with <code>add_edge</code>, and route branches with <code>add_conditional_edges</code>. The compiled graph is then invoked or streamed. Unlike Airflow-style DAGs, cycles are not a workaround; the graph can intentionally route from a tool node back to an agent node until a stop condition returns <code>END</code>.</p>
+        <figure class="diagram"><svg viewBox="0 0 780 520" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahlg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aalg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="58" y="214" width="108" height="58" rx="8" class="d-box"/><text x="112" y="239" text-anchor="middle" class="d-title">START</text><text x="112" y="258" text-anchor="middle" class="d-sub">input state</text>
+        <line x1="166" y1="243" x2="226" y2="243" class="d-edge" marker-end="url(#ahlg)"/>
+        <rect x="226" y="198" width="178" height="90" rx="8" class="d-box-accent"/><text x="315" y="228" text-anchor="middle" class="d-title">agent node</text><text x="315" y="249" text-anchor="middle" class="d-sub">model decides</text><text x="315" y="269" text-anchor="middle" class="d-sub">State → update</text>
+        <line x1="404" y1="243" x2="462" y2="243" class="d-edge-accent" marker-end="url(#aalg)"/>
+        <rect x="462" y="198" width="178" height="90" rx="8" class="d-box"/><text x="551" y="228" text-anchor="middle" class="d-title">conditional edge</text><text x="551" y="249" text-anchor="middle" class="d-sub">tools or END</text><text x="551" y="269" text-anchor="middle" class="d-sub">route function</text>
+        <line x1="551" y1="198" x2="551" y2="136" class="d-edge" marker-end="url(#ahlg)"/>
+        <rect x="480" y="66" width="142" height="70" rx="8" class="d-box"/><text x="551" y="94" text-anchor="middle" class="d-title">END</text><text x="551" y="114" text-anchor="middle" class="d-sub">final state</text>
+        <line x1="551" y1="288" x2="551" y2="350" class="d-edge-accent" marker-end="url(#aalg)"/>
+        <rect x="462" y="350" width="178" height="82" rx="8" class="d-box-accent"/><text x="551" y="381" text-anchor="middle" class="d-title">tool node</text><text x="551" y="402" text-anchor="middle" class="d-sub">side effect / result</text>
+        <path d="M462 391 C335 455 230 382 276 290" fill="none" class="d-edge" stroke-dasharray="5 4" marker-end="url(#ahlg)"/>
+        <text x="336" y="425" text-anchor="middle" class="d-elabel">cycle: observe result, decide again</text>
+        <rect x="230" y="60" width="168" height="66" rx="8" class="d-box"/><text x="314" y="86" text-anchor="middle" class="d-title">checkpointer</text><text x="314" y="106" text-anchor="middle" class="d-sub">thread snapshots</text>
+        <path d="M315 198 C315 165 315 151 315 126" fill="none" class="d-edge" marker-end="url(#ahlg)"/>
+        <text x="235" y="162" text-anchor="middle" class="d-elabel">compile(checkpointer=...)</text>
+        </svg><figcaption><b>A cyclic StateGraph.</b> The agent node updates shared state, a conditional edge routes either to <code>END</code> or to a tool, and the tool loops back. The checkpointer persists thread state so interrupts, retries, and time travel operate on named checkpoints rather than process memory.</figcaption></figure>
+        <p>This is the key move: control flow is data. The route function can inspect state and return the next node name. The diagram that Studio renders is not documentation pasted on top of code; it is close to the program's execution structure.</p>
+
+        <h3>3.2 Typed State + reducers</h3>
+        <p>Every graph has a shared <code>State</code>. In the docs, the canonical examples use <code>TypedDict</code>; Pydantic and dataclasses are also supported. Nodes do not return the whole state. They return partial updates, and LangGraph applies those updates channel-by-channel.</p>
+        <p>The important detail is reducers. If a key has no reducer, a node update overwrites it. If the key is annotated with a reducer — for example <code>Annotated[list[str], operator.add]</code> or LangGraph's <code>add_messages</code> helper — updates are merged. <code>MessagesState</code> is the prebuilt message-oriented state used in quickstarts, and <code>add_messages</code> handles appending, ID-aware replacement, and message deserialization. This is small but load-bearing: without reducers, parallel branches and iterative message history become accidental last-write-wins bugs.</p>
+        <pre><code>from typing import Annotated, TypedDict
+import operator
+
+class State(TypedDict):
+    messages: Annotated[list, add_messages]        # merge: append + ID-aware replace
+    visited:  Annotated[list[str], operator.add]   # merge: concatenate
+    answer:   str                                  # no reducer: last write wins
+
+# two parallel branches each return {"visited": ["a"]} and {"visited": ["b"]}
+# -> the reducer concatenates to ["a", "b"] instead of one clobbering the other</code></pre>
+
+        <h3>3.3 The Pregel-style runtime / super-steps</h3>
+        <p>After you call <code>compile()</code>, the graph is checked and converted into an executable object. The docs describe the runtime as inspired by Google's Pregel: nodes communicate by message passing, execution advances in discrete super-steps, active nodes run when they receive input on a channel, and nodes vote to halt when they have no incoming messages. The run terminates when all nodes are inactive and no messages are in flight.</p>
+        <p>That model matters for parallelism. Two branches from <code>START</code> can run in the same super-step and write updates that reducers reconcile. It also matters for debugging: a LangGraph trace is not just "function A called function B." It is a sequence of state snapshots, node activations, emitted updates, routed edges, and checkpoint writes.</p>
+        <figure class="diagram"><svg viewBox="0 0 760 320" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahlg2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aalg2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="24" y="128" width="120" height="60" rx="8" class="d-box"/><text x="84" y="153" text-anchor="middle" class="d-title">START</text><text x="84" y="172" text-anchor="middle" class="d-sub">input state</text>
+        <rect x="210" y="44" width="230" height="232" rx="10" class="d-group"/><text x="325" y="36" text-anchor="middle" class="d-sub">super-step N · parallel</text>
+        <rect x="232" y="64" width="186" height="70" rx="8" class="d-box-accent"/><text x="325" y="94" text-anchor="middle" class="d-title">node: search</text><text x="325" y="115" text-anchor="middle" class="d-sub">writes messages[+1]</text>
+        <rect x="232" y="190" width="186" height="70" rx="8" class="d-box-accent"/><text x="325" y="220" text-anchor="middle" class="d-title">node: calc</text><text x="325" y="241" text-anchor="middle" class="d-sub">writes messages[+1]</text>
+        <rect x="500" y="128" width="190" height="64" rx="8" class="d-box"/><text x="595" y="155" text-anchor="middle" class="d-title">reducer: add_messages</text><text x="595" y="175" text-anchor="middle" class="d-sub">merge channel updates</text>
+        <line x1="144" y1="150" x2="230" y2="99" class="d-edge" marker-end="url(#ahlg2)"/>
+        <line x1="144" y1="166" x2="230" y2="225" class="d-edge" marker-end="url(#ahlg2)"/>
+        <line x1="418" y1="99" x2="498" y2="150" class="d-edge-accent" marker-end="url(#aalg2)"/>
+        <line x1="418" y1="225" x2="498" y2="170" class="d-edge-accent" marker-end="url(#aalg2)"/>
+        <text x="595" y="214" text-anchor="middle" class="d-elabel">to next super-step</text>
+        </svg><figcaption><b>One super-step, two nodes.</b> Both branches fan out from START and run in the same Pregel super-step; each returns a partial update to the <code>messages</code> channel, and the reducer (<code>add_messages</code>) merges them instead of letting one overwrite the other. This is why reducers, not nodes, are where parallel correctness lives.</figcaption></figure>
+
+        <h3>3.4 Persistence/checkpointers &amp; durable execution</h3>
+        <p>Persistence is the feature that makes LangGraph feel less like a graph helper and more like agent infrastructure. A checkpointer persists a thread's graph state as checkpoints; a store persists application-defined data across threads. The docs separate the two: checkpointers are short-term, thread-scoped memory for conversation continuity, fault tolerance, time travel, and human-in-the-loop; stores are long-term, cross-thread memory for user facts or shared knowledge.</p>
+        <p>The API shape is direct: compile with <code>builder.compile(checkpointer=checkpointer, store=store)</code>, then pass <code>{"configurable": {"thread_id": "thread-1"}}</code> at invocation time. That <code>thread_id</code> becomes the persistent cursor. If the process dies, the next run can reload the thread's checkpoint rather than restart the agent from the beginning.</p>
+        <pre><code>from langgraph.checkpoint.memory import MemorySaver
+graph = builder.compile(checkpointer=MemorySaver())
+
+cfg = {"configurable": {"thread_id": "ticket-4821"}}
+graph.invoke({"messages": [("user", "open a refund")]}, cfg)
+# ... process restarts ...
+graph.invoke({"messages": [("user", "actually, make it partial")]}, cfg)
+# same thread_id -> the second call resumes the saved conversation, not a fresh one</code></pre>
+
+        <h3>3.5 Human-in-the-loop interrupts &amp; time travel</h3>
+        <p>LangGraph's <code>interrupt()</code> is the cleanest example of why durable execution matters. A node can call <code>interrupt(payload)</code>, the runtime saves state through the checkpointer, surfaces the payload to the caller, and waits indefinitely. Later, the caller resumes with <code>Command(resume=...)</code> using the same <code>thread_id</code>; that value becomes the return value of <code>interrupt()</code> inside the node.</p>
+        <p>That gives approval workflows, review-and-edit steps, and tool-call gates a first-class representation. It also creates time-travel workflows: inspect checkpoints, fork from an earlier state, edit state, or replay a different branch. The caveat is subtle but real: when an interrupt resumes, code before the interrupt in that node can run again, so nodes need idempotence discipline around external side effects.</p>
+        <pre><code>from langgraph.types import interrupt, Command
+
+def approve(state: State):
+    decision = interrupt({"action": "refund", "amount": state["amount"]})  # pauses here
+    return {"approved": decision == "yes"}
+
+# caller side: run until the interrupt, then resume — possibly hours later, new process
+graph.invoke(inputs, cfg)                  # stops at interrupt, state checkpointed
+graph.invoke(Command(resume="yes"), cfg)   # interrupt() returns "yes"; the node continues</code></pre>
+        <figure class="diagram"><svg viewBox="0 0 760 280" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahlg3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aalg3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="40" y="44" width="150" height="56" rx="8" class="d-box"/><text x="115" y="68" text-anchor="middle" class="d-title">node runs</text><text x="115" y="88" text-anchor="middle" class="d-sub">side effects</text>
+        <rect x="222" y="44" width="180" height="56" rx="8" class="d-box-accent"/><text x="312" y="68" text-anchor="middle" class="d-title">interrupt(payload)</text><text x="312" y="88" text-anchor="middle" class="d-sub">pause</text>
+        <rect x="434" y="44" width="180" height="56" rx="8" class="d-box-2"/><text x="524" y="68" text-anchor="middle" class="d-title">state checkpointed</text><text x="524" y="88" text-anchor="middle" class="d-sub">thread_id</text>
+        <line x1="190" y1="72" x2="220" y2="72" class="d-edge" marker-end="url(#ahlg3)"/>
+        <line x1="402" y1="72" x2="432" y2="72" class="d-edge-accent" marker-end="url(#aalg3)"/>
+        <path d="M524 100 C524 150 200 142 162 178" fill="none" class="d-edge" stroke-dasharray="5 4" marker-end="url(#ahlg3)"/>
+        <text x="372" y="136" text-anchor="middle" class="d-elabel">hours later · the process may have exited</text>
+        <rect x="40" y="180" width="210" height="56" rx="8" class="d-box-accent"/><text x="145" y="204" text-anchor="middle" class="d-title">Command(resume=value)</text><text x="145" y="224" text-anchor="middle" class="d-sub">same thread_id</text>
+        <rect x="282" y="180" width="210" height="56" rx="8" class="d-box"/><text x="387" y="204" text-anchor="middle" class="d-title">interrupt() returns value</text><text x="387" y="224" text-anchor="middle" class="d-sub">inside the node</text>
+        <rect x="524" y="180" width="180" height="56" rx="8" class="d-box"/><text x="614" y="204" text-anchor="middle" class="d-title">node continues</text><text x="614" y="224" text-anchor="middle" class="d-sub">to next edge</text>
+        <line x1="250" y1="208" x2="280" y2="208" class="d-edge-accent" marker-end="url(#aalg3)"/>
+        <line x1="492" y1="208" x2="522" y2="208" class="d-edge" marker-end="url(#ahlg3)"/>
+        </svg><figcaption><b>Durable human-in-the-loop.</b> <code>interrupt()</code> checkpoints the thread and hands control back to the caller, which can resume — even from a fresh process — with <code>Command(resume=value)</code> on the same <code>thread_id</code>. The subtle cost: code before the interrupt re-runs on resume, so external side effects in that node must be idempotent.</figcaption></figure>
+
+        <h3>3.6 Streaming, subgraphs, prebuilt react agent</h3>
+        <p>LangGraph exposes both classic <code>stream</code> / <code>astream</code> modes and newer event streaming. Current docs recommend <code>graph.stream_events(..., version="v3")</code>, which gives typed projections such as <code>messages</code>, <code>values</code>, <code>subgraphs</code>, <code>interrupts</code>, and <code>output</code>. The older stream-mode API still exposes <code>updates</code>, <code>values</code>, <code>messages</code>, <code>custom</code>, <code>checkpoints</code>, <code>tasks</code>, and <code>debug</code>. In other words, you can stream tokens, state updates, checkpoint events, and debugging traces without inventing your own event bus.</p>
+        <p>Subgraphs let a node contain another graph, which is how larger systems can decompose specialist workflows without flattening everything into one unreadable canvas. The package also includes prebuilt helpers. Historically the headline one was <code>langgraph.prebuilt.create_react_agent</code>, a compiled graph that loops model/tool calls until completion; in v1 docs and source it is deprecated in favor of <code>langchain.agents.create_agent</code>, but the implementation is still useful as a reference for how LangGraph expresses the canonical agent loop.</p>
+
+        <h2>4 · Result — what this buys in practice</h2>
+        <p>LangGraph is strongest when its mechanisms line up with real operational pain.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Feature</th><th>What it buys you</th><th>Honest caveat</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>StateGraph</code></td><td>Agent control flow is explicit: nodes, fixed edges, conditional edges, cycles</td><td>Graph structure is overhead when a loop would be clearer</td></tr>
+              <tr><td>Reducers</td><td>Safe-ish merging of partial state updates, message history, and parallel branches</td><td>Wrong reducer choice creates quiet state bugs</td></tr>
+              <tr><td>Pregel runtime</td><td>Super-step execution, parallel node activation, consistent stream/checkpoint boundaries</td><td>Debugging requires thinking in runtime steps, not only call stacks</td></tr>
+              <tr><td>Checkpointers</td><td>Thread state, resumability, fault tolerance, time travel, inspectable history</td><td>Production durability means choosing and operating a real backend</td></tr>
+              <tr><td>Interrupts</td><td>Human approval and review flows without hand-rolled pause/resume state machines</td><td>External side effects must be idempotent around resume</td></tr>
+              <tr><td>Platform / Studio</td><td>Deployment, visual debugging, hosted persistence, traces, team workflow</td><td>Commercial layer can blur the boundary between open runtime and paid ops</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The result is not magic intelligence. LangGraph does not make the model reason better. It makes the control plane around a model explicit enough that a team can inspect, resume, branch, and operate it.</p>
+
+        <h2>5 · Takeaways — where I would use it</h2>
+        <p>Five calibrated conclusions for engineers deciding whether the graph should exist.</p>
+        <h4>Use it when state is the product</h4>
+        <ul>
+          <li><strong>Long-running agents.</strong> If a run may pause, fail, resume, or wait on a human, the checkpointer model is the point.</li>
+          <li><strong>Non-linear control flow.</strong> Tool loops, validators, retries, specialist agents, and fallback branches map cleanly to conditional edges and cycles.</li>
+          <li><strong>Team debugging.</strong> State snapshots and graph visualization are valuable when multiple engineers need to reason about why an agent took a path.</li>
+        </ul>
+        <h4>Be cautious when the agent is still small</h4>
+        <ul>
+          <li><strong>A plain loop is a serious baseline.</strong> A <code>while</code> loop with clear variables, logs, and tests is often more legible than a graph with three nodes.</li>
+          <li><strong>LangChain gravity is real.</strong> You can use LangGraph standalone, but examples, integrations, observability, and deployment naturally pull toward the larger stack.</li>
+          <li><strong>APIs move.</strong> The v1 era is cleaner, but <code>create_react_agent</code> deprecation and streaming API evolution are reminders to pin versions and read migration notes.</li>
+        </ul>
+        <h4>Design reducers before adding nodes</h4>
+        <p>Most LangGraph bugs I would expect in production are not "the edge points to the wrong node." They are state bugs: a message list overwrote instead of appended, a parallel branch lost a value, a private channel leaked into streaming, or an interrupt resumed after a non-idempotent side effect.</p>
+        <h4>Keep commercial boundaries explicit</h4>
+        <p>The open-source library is MIT and independently useful. The most comfortable production experience likely includes LangSmith / LangGraph Platform features: Studio, hosted deployment, tracing, persistence plumbing, and visual debugging. That may be fine. It should be a conscious platform decision, not an accidental import path.</p>
+        <h4>Think of it as a state-machine runtime</h4>
+        <p>The right comparison is not "does this call OpenAI faster." It is "do I need a durable state machine around an unreliable stochastic worker." If yes, LangGraph is one of the most mature open-source answers.</p>
+
+        <h2>6 · vs Alternatives</h2>
+        <p>Where LangGraph sits in the 2026 agent orchestration landscape.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Option</th><th>What it is</th><th>Relative to LangGraph</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Plain Python loop</td><td>Hand-written <code>while</code> loop around model/tool calls</td><td>Best for simple agents; most debuggable until durability, branching, or HITL becomes real</td></tr>
+              <tr><td>LlamaIndex Workflows</td><td>Event-driven workflow system in the LlamaIndex ecosystem</td><td>Natural if your app is already LlamaIndex-heavy; less centered on Pregel-style shared graph state</td></tr>
+              <tr><td>CrewAI</td><td>Role-based multi-agent framework with crews and tasks</td><td>Higher-level and easier to demo; less precise control over state, edges, and durable execution</td></tr>
+              <tr><td>AutoGen</td><td>Multi-agent conversation framework from Microsoft</td><td>Good for agent-to-agent chat patterns; LangGraph is more explicit as a state-machine runtime</td></tr>
+              <tr><td>OpenAI Agents SDK</td><td>Provider-native agent SDK with tools, handoffs, tracing</td><td>Smoother for OpenAI-first apps; LangGraph is model/provider-agnostic and lower-level</td></tr>
+              <tr><td>Temporal</td><td>Durable workflow engine for general software systems</td><td>Stronger durability/retry engine; not LLM-native, so agent state, tokens, and tool loops are yours to model</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <nav class="post-nav">
+        <a href="./deepspeed.html">← DeepSpeed</a>
+        <a href="./mlflow.html">MLflow →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

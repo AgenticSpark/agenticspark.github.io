@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Delta Lake · ACID on the lakehouse — Ethan</title>
+  <meta name="description" content="A STAR analysis of Delta Lake: the transaction log, optimistic concurrency, checkpoints, Delta Kernel, delta-rs, UniForm, and the operational tradeoffs behind ACID tables on object storage." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/delta.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="Delta Lake · ACID on the lakehouse" />
+  <meta property="og:description" content="A STAR analysis of Delta Lake: the transaction log, optimistic concurrency, checkpoints, Delta Kernel, delta-rs, UniForm, and the operational tradeoffs behind ACID tables on object storage." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/delta.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Delta Lake · ACID on the lakehouse" />
+  <meta name="twitter:description" content="The lakehouse table format that puts ACID commits, schema control, and time travel over Parquet files." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">Lakehouse storage · STAR analysis</span>
+        <h1 class="post-title">Delta Lake</h1>
+        <p class="post-dek">The lakehouse format that made object storage feel less like a pile of files and more like a database table. Delta Lake wraps Parquet data with <em>the transaction log</em>: ordered JSON commits, periodic Parquet checkpoints, protocol versions, and enough metadata to reconstruct any snapshot. It is still Spark-native at the center, but delta-rs and Delta Kernel are turning the format into a shared substrate for non-Spark engines. The result is practical ACID on S3/GCS/ADLS, with real operational bills: commit coordination, small-file cleanup, protocol compatibility, and an Iceberg interoperability story that is useful but not free.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Repo</dt><dd><a href="https://github.com/delta-io/delta" target="_blank" rel="noopener">delta-io/<wbr>delta</a></dd></div>
+        <div><dt>License</dt><dd>Apache-2.0</dd></div>
+        <div><dt>Stack</dt><dd>Scala/Java · Rust (delta-rs) · Python</dd></div>
+        <div><dt>Version</dt><dd>v4.3.0 · Spark 4.x line</dd></div>
+        <div><dt>Stars</dt><dd>~8.9K · 2.1K forks</dd></div>
+        <div><dt>Reviewed</dt><dd>Jun 2026</dd></div>
+      </dl>
+
+      <div class="prose">
+        <h2>In short</h2>
+        <p>A transactional table format for Parquet data that moves database semantics into the lake without moving the data out of the lake.</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>What it is</h4>
+            <p>An Apache-2.0 open-source storage framework for building lakehouse tables over object storage and distributed filesystems. A Delta table is ordinary Parquet data plus a <code>_delta_log/</code> directory containing newline-delimited JSON commit files, Parquet checkpoint files, and protocol metadata. The core repo is Scala/Java and Spark-native; Python ships through <code>delta-spark</code>; Rust/Python non-Spark work lives in <code>delta-rs</code>; connector authors increasingly target Delta Kernel.</p>
+          </div>
+          <div class="callout">
+            <h4>Why it's interesting</h4>
+            <p>It makes immutable files behave like a mutable table. Writers atomically add and remove files in the log, readers choose a consistent snapshot, and maintenance commands compact, cluster, vacuum, and rewrite layout without changing the logical table. Time travel, schema enforcement, MERGE, streaming, deletion vectors, and UniForm are all expressions of the same idea: the metadata layer is the table.</p>
+          </div>
+          <div class="callout">
+            <h4>Biggest concerns</h4>
+            <p>The center of gravity is still Spark and Databricks-shaped. Non-Spark support is improving through delta-rs and Kernel, but feature parity is uneven. Object-store commits are not magic; multi-cluster S3 writes need a safe commit coordinator or catalog-managed protocol. Small files require regular <code>OPTIMIZE</code> and <code>VACUUM</code>. Protocol bumps and table features can strand older readers.</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">v4.3</span><span class="label">Latest Delta Lake release reviewed</span></div>
+          <div class="stat"><span class="num">_delta_log</span><span class="label">JSON commits + Parquet checkpoints</span></div>
+          <div class="stat"><span class="num">8.9K</span><span class="label">Stars · 2.1K forks</span></div>
+          <div class="stat"><span class="num">MVCC</span><span class="label">Snapshot isolation over immutable files</span></div>
+          <div class="stat"><span class="num">7 days</span><span class="label">Default VACUUM retention window</span></div>
+        </div>
+
+        <div class="callout accent">
+          <h4>Verdict</h4>
+          <p>Delta Lake is the strongest choice when Spark is already your write path and you want ACID, DML, streaming, and mature operational commands without leaving Parquet. Iceberg has the cleaner multi-engine perception and a broader neutral-catalog story; Delta has a very battle-tested Spark implementation and a fast-moving interoperability push through Kernel and UniForm. The honest answer is not "Delta beats Iceberg" or the reverse. If your writes are Spark-heavy, Delta is pragmatic. If your organization is engine-diverse from day one, test Iceberg and Delta against the exact features you need, especially row deletes, catalog integration, and protocol compatibility.</p>
+        </div>
+
+        <h2>1 · Situation — data lakes had no table contract</h2>
+        <p>Classic data lakes were cheap, scalable, and operationally loose. They stored Parquet, ORC, or CSV files in folders on S3, ADLS, GCS, or HDFS, then asked query engines to infer table state from directory listings and partition paths. That worked for append-only logs. It fell apart as soon as users expected database behavior.</p>
+        <p>A failed job could leave half-written output beside valid data. A reader could list files while a writer was replacing a partition and see a state that never existed logically. Deletes and updates meant rewriting data files and hoping every engine agreed which files were live. Schema drift slipped bad records into production datasets. There was no reliable time travel because the lake had no authoritative version history.</p>
+        <p>The underlying files were immutable, but the business object was mutable: a table whose rows change, whose schema evolves, whose consumers need isolation, and whose history matters. Delta Lake's move was to stop treating the directory listing as the source of truth.</p>
+
+        <h2>2 · Task — make Parquet tables transactional without owning storage</h2>
+        <p>The goal was not to replace the lake with a database. The goal was to keep the cheap object-store data plane and add a table control plane strong enough for production analytics.</p>
+        <p>That meant Delta had to provide a serial history of versions, atomic commits, optimistic concurrency, schema validation, data skipping metadata, and maintenance commands while still storing data as open Parquet files. It also had to work with batch and streaming, because lakehouse workloads are rarely one or the other. The format needed to be self-describing enough that a copied table directory could still be read without a metastore, but structured enough that newer features could declare protocol requirements explicitly.</p>
+        <ol>
+          <li><strong>Durable table state</strong> — the log, not the object-store directory listing, defines which files are live.</li>
+          <li><strong>Transactional writes</strong> — writers append one atomic commit after writing data files optimistically.</li>
+          <li><strong>Interoperable reads</strong> — Spark first, then a path for Rust, Python, Java Kernel, Trino, Flink, and catalog-managed engines.</li>
+        </ol>
+
+        <h2>3 · Action — how Delta actually works</h2>
+        <p>Six lenses: the log, concurrency, time travel, DML and schema control, layout maintenance, and the newer interoperability layer.</p>
+
+        <h3>3.1 The transaction log — JSON commits plus checkpoints</h3>
+        <p>Every Delta table has a <code>_delta_log/</code> directory. The atomic unit is a zero-padded JSON file such as <code>00000000000000000045.json</code>. It is newline-delimited JSON, where each line is an action: <code>add</code> a Parquet file, <code>remove</code> a file with a tombstone, change <code>metaData</code>, update <code>protocol</code>, record <code>txn</code> application ids, or attach commit provenance through <code>commitInfo</code>. The data files themselves remain Parquet; the log says which ones are part of version 45.</p>
+        <p>Reading a table means finding the latest complete snapshot: start from a checkpoint, replay JSON commits after it, then produce the set of live files and metadata. Checkpoints are Parquet files such as <code>00000000000000000042.checkpoint.parquet</code>, tracked by <code>_last_checkpoint</code>, so large tables do not replay millions of JSON actions on every read. Newer protocol text also describes v2 checkpoints and sidecar files for very large action sets.</p>
+        <figure class="diagram"><svg viewBox="0 0 760 520" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahdl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aadl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="45" y="52" width="190" height="72" rx="8" class="d-box"/><text x="140" y="80" text-anchor="middle" class="d-title">Parquet data files</text><text x="140" y="102" text-anchor="middle" class="d-sub">part-000…snappy.parquet</text>
+        <rect x="45" y="150" width="190" height="72" rx="8" class="d-box"/><text x="140" y="178" text-anchor="middle" class="d-title">More data files</text><text x="140" y="200" text-anchor="middle" class="d-sub">partition folders optional</text>
+        <rect x="286" y="36" width="210" height="64" rx="8" class="d-box-accent"/><text x="391" y="62" text-anchor="middle" class="d-title">_delta_log/00000.json</text><text x="391" y="82" text-anchor="middle" class="d-sub">add · remove · metadata</text>
+        <rect x="286" y="122" width="210" height="64" rx="8" class="d-box-accent"/><text x="391" y="148" text-anchor="middle" class="d-title">_delta_log/00001.json</text><text x="391" y="168" text-anchor="middle" class="d-sub">atomic commit</text>
+        <rect x="286" y="208" width="210" height="64" rx="8" class="d-box-accent"/><text x="391" y="234" text-anchor="middle" class="d-title">00010.checkpoint.parquet</text><text x="391" y="254" text-anchor="middle" class="d-sub">compacted table state</text>
+        <line x1="235" y1="88" x2="286" y2="68" class="d-edge" marker-end="url(#ahdl)"/>
+        <line x1="235" y1="186" x2="286" y2="154" class="d-edge" marker-end="url(#ahdl)"/>
+        <line x1="496" y1="68" x2="560" y2="68" class="d-edge-accent" marker-end="url(#aadl)"/>
+        <line x1="496" y1="154" x2="560" y2="154" class="d-edge-accent" marker-end="url(#aadl)"/>
+        <line x1="496" y1="240" x2="560" y2="240" class="d-edge-accent" marker-end="url(#aadl)"/>
+        <rect x="560" y="82" width="155" height="172" rx="8" class="d-box"/><text x="637" y="118" text-anchor="middle" class="d-title">Snapshot vN</text><text x="637" y="142" text-anchor="middle" class="d-sub">protocol</text><text x="637" y="164" text-anchor="middle" class="d-sub">schema</text><text x="637" y="186" text-anchor="middle" class="d-sub">live file set</text><text x="637" y="208" text-anchor="middle" class="d-sub">tombstones</text><text x="637" y="230" text-anchor="middle" class="d-sub">statistics</text>
+        <path d="M637 254 C637 352 112 352 112 223" fill="none" class="d-edge" stroke-dasharray="5 4" marker-end="url(#ahdl)"/>
+        <text x="380" y="340" text-anchor="middle" class="d-elabel">reader scans only files selected by the snapshot</text>
+        </svg><figcaption><b>The log is the table.</b> Data files are immutable Parquet objects; JSON commits declare atomic adds and removes; checkpoints compact the action history; a reader reconstructs snapshot version N and ignores files not referenced by that snapshot.</figcaption></figure>
+        <p>This is the core reason Delta works on object storage: the expensive and failure-prone operation is reduced to publishing the next log entry, while data files can be written before the commit and garbage-collected later if abandoned.</p>
+
+        <h3>3.2 Optimistic concurrency and snapshot isolation</h3>
+        <p>Delta uses MVCC. Writers read a snapshot, write new Parquet files optimistically, then try to commit the next version. If another writer won the version first, Delta checks whether the two operations conflict: appends to disjoint partitions can often proceed after retry; overlapping updates, deletes, or metadata changes can fail. Readers do not block writers and writers do not rewrite in-place data. A reader holds a consistent snapshot even while later commits land.</p>
+        <p>The caveat is storage semantics. Delta's ACID guarantees assume atomic visibility, mutual exclusion for creating the next log file, and consistent listing. Cloud object stores have improved, but multi-writer and multi-cluster deployments still need careful configuration: DynamoDB-backed S3 log stores, catalog-managed tables, or a commit coordinator for paths where "just write the next JSON file" is not sufficient.</p>
+
+        <h3>3.3 Time travel — version and timestamp as APIs</h3>
+        <p>Because the log is an ordered history, older table states are addressable. Spark reads can specify <code>versionAsOf</code> or <code>timestampAsOf</code>; streaming can start from <code>startingVersion</code> or <code>startingTimestamp</code>; <code>DESCRIBE HISTORY</code> exposes versions, timestamps, operations, read versions, isolation level, and operation metrics. This is not a backup system by itself. It is bounded by log retention and <code>VACUUM</code>, whose default retention is seven days for unreferenced files.</p>
+
+        <h3>3.4 Schema enforcement, evolution, MERGE, and DML</h3>
+        <p>Delta enforces schema at write time, which is the unglamorous feature that saves real pipelines. Bad records do not silently widen a table unless schema evolution is explicitly enabled through options such as <code>mergeSchema</code> or auto-merge configuration. The same transaction mechanism powers <code>MERGE INTO</code>, <code>UPDATE</code>, <code>DELETE</code>, generated columns, constraints, and change data files under <code>_change_data/</code>. A MERGE is not editing a Parquet file in place; it is writing replacement files or deletion-vector metadata and committing adds/removes atomically.</p>
+        <p>Streaming is first-class in the Spark implementation. Delta tables are both sources and sinks for Structured Streaming, with checkpoints providing exactly-once semantics when concurrent batch jobs or multiple streams touch the same table. The tricky part is downstream semantics for non-append commits: options such as <code>skipChangeCommits</code> exist because a stream cannot always propagate arbitrary rewrites as simple appended rows.</p>
+
+        <h3>3.5 OPTIMIZE, Z-order, liquid clustering, deletion vectors</h3>
+        <p>Lakehouse tables fail operationally when they become small-file museums. Delta's answer is explicit maintenance. <code>OPTIMIZE</code> compacts small Parquet files; <code>ZORDER BY</code> co-locates related values for data skipping; liquid clustering replaces rigid partition/Z-order choices with clustering columns that can evolve over time, then incrementally reclusters with <code>OPTIMIZE</code>. Liquid clustering is not compatible with partitioning or Z-order on the same table, and the docs cap clustering columns at four.</p>
+        <p>Deletion vectors are the merge-on-read feature: instead of rewriting a large Parquet file because one row was deleted, Delta can record a bitmap-like vector of invalidated rows and apply it during reads. This lowers write amplification for <code>DELETE</code>, <code>UPDATE</code>, and <code>MERGE</code>, but it shifts work to readers and maintenance. Physical purge still requires file rewrite through <code>OPTIMIZE</code> or <code>REORG TABLE ... APPLY (PURGE)</code>.</p>
+
+        <h3>3.6 delta-rs, Delta Kernel, and UniForm interop</h3>
+        <p>The main repo remains Scala/Java with Spark as the reference path, but the project is clearly trying to escape "Spark format" status. <code>delta-rs</code> is a native Rust implementation with Python bindings used by engines such as DataFusion and by lighter-weight data tools. Delta Kernel provides Java APIs — <code>Table</code>, <code>Snapshot</code>, <code>Scan</code>, <code>Transaction</code>, and the pluggable <code>Engine</code> interface — so connector authors can use protocol logic without reimplementing every rule. The separate Rust/C Kernel effort is newer and explicitly experimental, with reads and limited writes still maturing.</p>
+        <p>UniForm attacks the table-format war from another angle. Delta Universal Format writes Iceberg and Hudi metadata for a Delta table so Iceberg/Hudi readers can access the same Parquet data. Useful, yes. Free, no. It requires table features such as column mapping and writer protocol support; Iceberg/Hudi metadata generation is asynchronous; write support remains Delta-side; and the docs call out limitations such as UniForm not working with deletion vectors enabled.</p>
+
+        <h2>4 · Result — what you get in practice</h2>
+        <p>The value is a set of database-like behaviors over object storage, plus the operational chores that come with pretending files are rows.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Feature</th><th>What it buys you</th><th>Honest caveat</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Transaction log</td><td>ACID commits, MVCC snapshots, serial table versions</td><td>Commit safety depends on storage/catalog coordination</td></tr>
+              <tr><td>Checkpoints</td><td>Fast snapshot reconstruction for huge logs</td><td>Checkpoint format/protocol changes affect older readers</td></tr>
+              <tr><td>MERGE / UPDATE / DELETE</td><td>CDC, SCD, GDPR deletes, upserts on lake data</td><td>Can rewrite many files without good predicates or DVs</td></tr>
+              <tr><td>Streaming source + sink</td><td>Batch and streaming over one table abstraction</td><td>Non-append commits need explicit downstream semantics</td></tr>
+              <tr><td>OPTIMIZE / clustering</td><td>Controls small files and improves data skipping</td><td>Requires scheduled maintenance and workload knowledge</td></tr>
+              <tr><td>UniForm / Kernel / delta-rs</td><td>Path toward multi-engine Delta tables</td><td>Feature parity and protocol support remain uneven</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The best mental model: Delta gives the lake a commit log. Everything powerful comes from that. Everything painful comes from keeping that log, the Parquet files, the object store, and multiple engines in agreement.</p>
+
+        <h2>5 · Takeaways — how to read Delta Lake in 2026</h2>
+        <p>Five calibrated conclusions for teams choosing a lakehouse table format.</p>
+        <h4>What's genuinely strong</h4>
+        <ul>
+          <li><strong>The core architecture is simple and durable.</strong> JSON actions plus Parquet checkpoints is understandable, inspectable, and proven at scale.</li>
+          <li><strong>Spark integration is mature.</strong> If Spark Structured Streaming and Spark SQL DML are central to your platform, Delta is deeply paved.</li>
+          <li><strong>Operational commands are real product surface.</strong> <code>DESCRIBE HISTORY</code>, <code>VACUUM</code>, <code>OPTIMIZE</code>, clustering, and DML are not side projects.</li>
+          <li><strong>The protocol is explicit.</strong> Reader/writer versions and table features make compatibility visible, even when they are annoying.</li>
+        </ul>
+        <h4>What to budget for</h4>
+        <ul>
+          <li><strong>Maintenance jobs.</strong> Compact small files, vacuum old data, monitor checkpoints, and keep retention aligned with rollback needs.</li>
+          <li><strong>Protocol discipline.</strong> A table feature enabled by one writer can make another engine unable to read or write the table.</li>
+          <li><strong>Interop testing.</strong> UniForm, Kernel, and delta-rs reduce lock-in, but they do not erase semantic differences between engines.</li>
+        </ul>
+        <h4>Use it when Spark is the write authority</h4>
+        <p>Delta is easiest to justify when Spark owns ingestion, streaming, and DML, and other engines are mostly readers. That is the path where the implementation is most mature.</p>
+        <h4>Be careful with multi-cluster object-store writes</h4>
+        <p>On S3 especially, treat write coordination as architecture, not configuration trivia. Use supported log stores, catalog-managed commits, or a commit coordinator where required.</p>
+        <h4>Do not confuse open files with open semantics</h4>
+        <p>Parquet data is portable; the table semantics live in the log and protocol. A reader that ignores deletion vectors, column mapping, or feature flags is not a Delta reader in any meaningful sense.</p>
+
+        <h2>6 · vs Alternatives</h2>
+        <p>Where Delta sits in the 2026 lakehouse/storage landscape.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Option</th><th>What it is</th><th>Relative to Delta</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Apache Iceberg</td><td>Open table format with manifest lists, snapshots, broad engine/catalog adoption</td><td>Often the neutral multi-engine default; Delta is stronger where Spark DML and Databricks workflows dominate</td></tr>
+              <tr><td>Apache Hudi</td><td>Lakehouse format focused on incremental ingestion, indexing, and copy-on-write / merge-on-read tables</td><td>More ingestion/indexing machinery; Delta is simpler to reason about for Spark-centric analytics tables</td></tr>
+              <tr><td>Plain Parquet/Hive</td><td>Files plus partition folders and metastore entries</td><td>Cheaper conceptually, but no native ACID log, time travel, or safe DML contract</td></tr>
+              <tr><td>Apache Paimon</td><td>Lake format for streaming updates, Flink-first tables, and LSM-like storage</td><td>Interesting for Flink-heavy streaming warehouses; smaller ecosystem than Delta/Iceberg</td></tr>
+              <tr><td>BigQuery/Snowflake native</td><td>Managed warehouse storage with proprietary transaction layer</td><td>Less operational burden and strong SQL; less control over open file layout and multi-engine lake access</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <nav class="post-nav">
+        <a href="./mlflow.html">← MLflow</a>
+        <a href="./evals.html">OpenAI Evals →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

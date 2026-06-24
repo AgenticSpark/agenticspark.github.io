@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Headroom — Ethan</title>
+  <meta name="description" content="A local-first context-compression layer for AI agents — shipped as a Python/TypeScript SDK, a transparent proxy, and an MCP server. What's actually inside v0.22.4, and where the docs and the code disagree." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/headroom.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="Headroom" />
+  <meta property="og:description" content="A local-first context-compression layer for AI agents — a STAR analysis of chopratejas/headroom." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/headroom.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="Headroom" />
+  <meta name="twitter:description" content="A local-first context-compression layer for AI agents." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">Context compression · STAR analysis</span>
+        <h1 class="post-title">Headroom</h1>
+        <p class="post-dek">A local-first context-compression layer for AI agents — shipped as a Python/TypeScript SDK, a transparent proxy (<code>headroom wrap claude|codex|cursor|aider|copilot</code>), and an MCP server. It sits between an agent and the model API and shrinks bloated tool outputs before they hit the context window. The headline is 60–95% fewer tokens; the production median is 4.8%. The compression core migrated into Rust via PyO3, the JSON compressor uses real information theory, and a reversible compress-cache-retrieve layer lets the model pull originals back. Five months old, 7.6k stars, v0.22.4 — here is what's actually inside, and where the docs and the code disagree.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Repo</dt><dd><a href="https://github.com/chopratejas/headroom" target="_blank" rel="noopener">chopratejas/<wbr>headroom</a></dd></div>
+        <div><dt>License</dt><dd>Apache-2.0</dd></div>
+        <div><dt>Stack</dt><dd>Python · Rust (PyO3) · FastAPI · ONNX</dd></div>
+        <div><dt>Version</dt><dd>v0.22.4 · pre-1.0</dd></div>
+        <div><dt>Commit</dt><dd>378d77e7</dd></div>
+        <div><dt>Reviewed</dt><dd>Jun 2026</dd></div>
+      </dl>
+
+      <div class="prose">
+        <h2>In short</h2>
+        <div class="callout">
+          <p>Five bullets the rest of this report defends with code, citations, and the project's own telemetry.</p>
+        </div>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>What it is</h4>
+            <p>A drop-in compression proxy + SDK + MCP server that compresses agent tool outputs (search results, API responses, logs) by content type — using statistical methods with no LLM on the hot path. <code>pip install headroom-ai &amp;&amp; headroom wrap claude</code> routes any agent through it unchanged. Apache-2.0, local-first.</p>
+          </div>
+          <div class="callout">
+            <h4>Why it's interesting</h4>
+            <p>The JSON compressor (SmartCrusher) is now Rust/PyO3 and uses Kneedle knee-detection + SimHash dedup + zlib validation, always keeping errors/anomalies. The text compressor is a fine-tuned ModernBERT dual-head exported to int8 ONNX. And CCR makes compression reversible by injecting a <code>headroom_retrieve</code> tool with BM25 search inside the cached blob.</p>
+          </div>
+          <div class="callout">
+            <h4>Biggest concerns</h4>
+            <p>The advertised three-stage pipeline is now ~one stage — CacheAligner was reduced to a detector that never mutates, and IntelligentContext was retired outright, yet both still headline the docs. The headline 60–95% is a JSON ceiling; production median is 4.8%. The benchmark table has no single reproducible source. CCR's "nothing is thrown away" is bounded by an in-memory 300s TTL.</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">7.6K</span><span class="label">Stars · 5 mo</span></div>
+          <div class="stat"><span class="num">~100K</span><span class="label">PyPI dl / 30d</span></div>
+          <div class="stat"><span class="num">4.8%</span><span class="label">Production median</span></div>
+          <div class="stat"><span class="num">52ms</span><span class="label">P50 proxy overhead</span></div>
+          <div class="stat"><span class="num">v0.22.4</span><span class="label">30 releases</span></div>
+        </div>
+
+        <div class="callout accent">
+          <h4>Verdict</h4>
+          <p>The most technically ambitious open-source compression proxy of 2026 — and one of the few that documents its own limitations honestly. The Rust core, reversible cache, ModernBERT compressor, and multi-agent wrapping are real and worth studying. Worth running today behind any JSON-tool-heavy agent (codebase search, SRE, data triage); skip it for code-only or short-chat workloads where it correctly compresses almost nothing. Solid pre-1.0 (v0.22.4, ~5 months old, 7.6k stars, Apache-2.0, a healthier bus factor than most one-author projects).</p>
+        </div>
+
+        <h2>1 · Situation — context windows are the budget now</h2>
+        <p>By 2026 the binding constraint on agentic LLM workloads stopped being model quality and became context economics.</p>
+        <p>A coding or SRE agent that calls tools — grep, read_file, a database query, a GitHub API — accumulates tool outputs in its message history, and those outputs are dominated by structurally redundant data: a 500-row JSON array where every row has the same twelve keys, a 200-line build log where 190 lines are INFO, a search result with the same file:line:content shape repeated 150 times. Every one of those tokens is paid for on every subsequent turn, because the whole history is re-sent. On long sessions the tool-output tail can be 80% of the bill.</p>
+        <p>Providers have started solving pieces of this natively — Anthropic shipped prompt caching and context editing, OpenAI has prefix caching — but those are coarse (cache the prefix, drop the oldest turns) and provider-specific. A parallel research line attacks the content: Microsoft's LLMLingua / LLMLingua-2 compress prompts with a small LM that scores token importance. The gap that remains is an opinionated, drop-in, provider-neutral layer that understands that tool outputs are the fat, compresses them structurally without an LLM round-trip, and does it transparently enough that you don't rewrite your agent.</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>LLMLingua / LLMLingua-2 — LM-based</h4>
+            <p>microsoft/LLMLingua (~5K ⭐, Python, MIT) — perplexity/token-classifier prompt compression with a small LM. Research-grade, not a proxy; best when the fat is prose.</p>
+          </div>
+          <div class="callout">
+            <h4>Mem0 — memory layer</h4>
+            <p>mem0ai/mem0 (30K+ ⭐, Python) — extract-and-recall memory. Overlaps Headroom's memory feature but not its tool-output compression. Complementary, not competitive.</p>
+          </div>
+          <div class="callout">
+            <h4>Native provider compaction</h4>
+            <p>Anthropic context editing / prompt caching, OpenAI prefix caching — free and zero-effort, but coarse (drop oldest turns), lossy, and provider-locked.</p>
+          </div>
+          <div class="callout">
+            <h4>Headroom — content-aware proxy</h4>
+            <p>chopratejas/headroom (7.6K ⭐ in 5 months, Apache-2.0, Python+Rust) — a proxy + SDK + MCP server doing content-aware, reversible tool-output compression. The subject of this report.</p>
+          </div>
+        </div>
+        <p>Headroom's specific bet: stay between the agent and the API as a transparent proxy, compress tool outputs by content type with statistical methods (no LLM call on the hot path), and make it reversible so aggressive compression carries no data-loss risk. That positioning — and how much of it the code actually delivers — is what this report unpacks against commit 378d77e7 (v0.22.4).</p>
+
+        <h2>2 · Task — what Headroom commits to solving</h2>
+        <p>Five concrete deliverables, stripped of the headline.</p>
+        <ul>
+          <li><strong>Content-aware compression without an LLM on the hot path.</strong> Detect each tool output's content type (JSON array, code, log, diff, HTML, text) and route it to a specialist compressor, in milliseconds, deterministically.</li>
+          <li><strong>A transparent drop-in path.</strong> A proxy and wrap commands that set <code>ANTHROPIC_BASE_URL</code> / <code>OPENAI_BASE_URL</code> so existing agents route through Headroom unmodified, with byte-faithful forwarding when nothing is compressed.</li>
+          <li><strong>Reversibility (CCR).</strong> Cache the original of anything compressed and inject a retrieval tool so the model can recover full data on demand — eliminating the "compress hard vs. lose data" tradeoff.</li>
+          <li><strong>Cross-session learning.</strong> A telemetry network that learns which fields matter per tool type, plus <code>headroom learn</code>, an offline analyzer that mines agent session logs to write project-specific correction notes.</li>
+          <li><strong>Memory.</strong> A <code>with_memory()</code> wrapper that extracts durable facts inline and re-injects them — "temporal compression" of conversation history.</li>
+        </ul>
+        <p>The actual gap it fills: a provider-neutral, locally-hosted compression proxy that an agent uses the moment it's installed, with a reversibility guarantee that lets it compress harder than a lossy compressor safely could. The price for "structural, no-LLM, deterministic" is that the savings are entirely contingent on what the agent fetches — giant JSON arrays compress 90%, code and short chat compress ~0% (by design). The honest version of the pitch is "we make your JSON-heavy tool outputs cheap."</p>
+
+        <h2>3 · Action — how it actually works</h2>
+        <p>Reading the code, not the README. Eight lenses: the pipeline, the router, SmartCrusher, Kompress, the code compressor, CCR, the proxy + Rust crates, memory + learn.</p>
+
+        <h3>3.1 The pipeline — as advertised vs. as shipped</h3>
+        <p>Every doc — architecture.mdx, how-compression-works.mdx — describes a three-stage pipeline:</p>
+        <figure class="diagram"><svg viewBox="0 0 760 134" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahhr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aahr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs><rect x="20" y="24" width="210" height="86" rx="8" class="d-box"/><text x="125.0" y="64.0" text-anchor="middle" class="d-title">CacheAligner</text><text x="125.0" y="82.0" text-anchor="middle" class="d-sub">stabilize cache prefix</text><rect x="275" y="24" width="210" height="86" rx="8" class="d-box"/><text x="380.0" y="64.0" text-anchor="middle" class="d-title">ContentRouter</text><text x="380.0" y="82.0" text-anchor="middle" class="d-sub">detect type &amp; route</text><rect x="530" y="24" width="210" height="86" rx="8" class="d-box-accent"/><text x="635.0" y="64.0" text-anchor="middle" class="d-title">IntelligentContext</text><text x="635.0" y="82.0" text-anchor="middle" class="d-sub">score &amp; drop to fit budget</text><line x1="230" y1="67.0" x2="275" y2="67.0" class="d-edge" marker-end="url(#ahhr)"/><line x1="485" y1="67.0" x2="530" y2="67.0" class="d-edge" marker-end="url(#ahhr)"/></svg><figcaption><b>Headroom compression pipeline.</b> Requests pass through cache-prefix stabilisation, type-aware routing, and a scoring stage that drops low-value messages to fit the token budget — transparently, in front of any agent.</figcaption></figure>
+        <p>The code tells a different, more interesting story. The orchestrator (pipeline.py L31-44) documents that stage three was removed:</p>
+        <div class="callout">
+          <p>Phase B PR-B1 retired the IntelligentContextManager / RollingWindow "drop messages from history" stage. Live-zone-only compression is the sole strategy going forward — message-list mutation no longer happens in the pipeline.</p>
+        </div>
+        <p>And stage one was gutted. The CacheAligner header (cache_aligner.py L1-24) is unambiguous:</p>
+        <div class="callout">
+          <p>This module is now a detector-only transform. The previous rewrite path (which strips dynamic content from the system prompt and re-inserts it as a context block) violated invariant I2 — the cache hot zone (system prompt) must never be mutated. That path has been removed… The transform's apply method is a no-op for messages — it only populates warnings and cache_metrics.</p>
+        </div>
+        <p>So the live SDK pipeline is, in practice, ContentRouter — preceded by a CacheAligner that only observes prefix volatility and emits a warning, and followed by nothing. This is a defensible engineering decision — mutating a system prompt to chase cache hits is genuinely dangerous, and dropping history messages risks losing context the model needs — but it means two-thirds of the advertised pipeline is no longer doing what the docs say it does. That gap is the single most important thing a reader evaluating Headroom should know, and it is not in the README.</p>
+
+        <h3>3.2 ContentRouter — regex routing, not the ML the docs imply</h3>
+        <p>The real brain is content_router.py (1,400+ lines). It classifies each tool output and dispatches to a strategy: <code>_determine_strategy()</code> maps ContentType → strategy (L976-1021) — JSON_ARRAY → SMART_CRUSHER, SOURCE_CODE → CODE_AWARE, BUILD_OUTPUT → LOG. Mixed content (L1023-1096) is line-scanned, each section routed independently, reassembled with code fences preserved verbatim.</p>
+        <p>This is worth flagging because how-compression-works.mdx tells users detection happens via "Magika (ML-based)." The live router path is structural pattern-matching with a hardcoded fallback to KOMPRESS (L420-455). The fallback chains are sensible — CODE_AWARE falls back to KOMPRESS if tree-sitter is missing; SMART_CRUSHER falls back if it found no savings (L1178-1343) — and crucially, if no compressor wins, the input is returned unchanged with a passthrough tag (L1380-1402). The router is conservative by construction: it never makes output bigger.</p>
+
+        <h3>3.3 SmartCrusher — the part that earns the headline (and it's in Rust now)</h3>
+        <p>SmartCrusher is the JSON-array compressor that produces the 90% numbers, and it is the clearest example of real engineering in the repo. The Python class (smart_crusher.py L136-279) is now a thin PyO3 wrapper — the old Python implementation was retired and it delegates to <code>headroom._core.SmartCrusher</code> with no Python fallback (L161-164). The algorithm, documented in limitations.mdx L97-114, is genuinely information-theoretic:</p>
+        <ul>
+          <li>Kneedle algorithm on bigram-coverage curves finds the K where adding more items stops adding information.</li>
+          <li>SimHash fingerprinting detects near-duplicate items.</li>
+          <li>zlib validation confirms the chosen subset still captures the full set's diversity.</li>
+        </ul>
+        <p>The resulting K is split 30% from the array start / 15% from the end / 55% importance-scored, and four classes of item are kept unconditionally even if they exceed the budget: anything containing "error/exception/failed/critical", numeric anomalies beyond 2σ, string-length anomalies beyond 2σ, and statistical change points. SmartCrusher also has a lossless path — <code>compact_document_json()</code> (L374-395) rewrites tabular sub-arrays as CSV-plus-schema strings; the lossless compaction is preferred when it saves ≥30% bytes, otherwise it falls through to lossy row-drop with CCR markers (L270-279).</p>
+        <p>This is the design that lets the SRE-log benchmark find the one critical error at position 67 in a 100-entry array while compressing 87.6% — the error item is in the unconditional-keep set. It is real, and it is well-built.</p>
+
+        <h3>3.4 Kompress — a fine-tuned ModernBERT, exported to ONNX</h3>
+        <p>When content isn't a JSON array and isn't code, the text path is Kompress (kompress_compressor.py), an ML compressor whose default model is the author's own chopratejas/kompress-base (L34-43). The architecture (L221-260) is a dual-head model on an answerdotai/ModernBERT-base backbone:</p>
+        <pre><code># dual-head over ModernBERT-base
+token_head = Linear(hidden, 2)              # keep / discard per token
+span_head  = Conv1d → GELU → Conv1d → Sigmoid   # span importance
+
+# keep a token if the token head says keep,
+# OR it's borderline and the span head boosts it
+keep = get_keep_mask(token_logits, span_scores)</code></pre>
+        <p>For deployment it downloads onnx/kompress-int8.onnx and runs it under onnxruntime with CPU-tuned session options (onnx_runtime.py L10-35). This is the same family of idea as LLMLingua-2 (a fine-tuned encoder scoring token retention) — a reasonable choice — but it's worth being clear-eyed that the flagship text model is a single-author checkpoint with no published training-set card in-repo.</p>
+
+        <h3>3.5 CodeAwareCompressor — and why your code passes through anyway</h3>
+        <p>There's an AST compressor (code_compressor.py) that parses with tree-sitter, scores symbol importance by references / fan-out / publicness (L685-845), re-emits compressed code, verifies the result still parses, and rolls back to the original if it doesn't (L989-1010). It's good defensive engineering. But in practice it almost never fires: per limitations.mdx L43-57, code is gated behind a 50-word floor, a <code>protect_recent_code=4</code> rule, and <code>protect_analysis_context=True</code> — if the latest user message contains "analyze/review/explain/fix/debug", all code in the conversation is protected. The doc's own justification is correct: code is fetched because the user wants to work with it. The net effect is that the headline-grabbing AST compressor is, by deliberate default, mostly off.</p>
+
+        <h3>3.6 CCR — the reversibility guarantee, and its fine print</h3>
+        <p>CCR (Compress-Cache-Retrieve) is the genuinely novel idea: make compression lossless from the model's perspective by caching originals and letting the model retrieve them. The flow (ccr.mdx):</p>
+        <ol>
+          <li>SmartCrusher compresses 1,000 items to 20; the original is cached under a hash; a marker [1000 items compressed to 20. Retrieve more: hash=abc123] is embedded.</li>
+          <li>A <code>headroom_retrieve</code> tool is injected into the model's tool list (tool_injection.py L21-70).</li>
+          <li>When the model calls it, a Response Handler intercepts, fetches from cache (~1ms), and continues the API call — the client never sees the CCR round-trip (response_handler.py L193-255).</li>
+          <li>The retrieve call accepts an optional query, which runs BM25 search inside the cached blob so the model gets only the relevant subset, not the whole original.</li>
+        </ol>
+        <p>It's a clean design. But the "nothing is ever thrown away" callout in the docs needs an asterisk the docs don't give it. The store (compression_store.py L195-284) is explicitly "thread-safe in-memory storage" with TTL + heap eviction and a default_ttl of 300 seconds (config.py L409-425). The hash key is SHA-256 truncated to 24 hex chars / 96 bits. So the reversibility guarantee is real within a 5-minute window and within the lifetime of the proxy process — restart the proxy, or wait past the TTL, and the original is gone. For the intended use (the model retrieving within the same active session) that's fine; as an absolute "zero risk of permanent data loss" claim it's overstated.</p>
+
+        <h3>3.7 The proxy, the Rust crates, and multi-agent wrapping</h3>
+        <p>The proxy (proxy/server.py L281-296) is FastAPI + uvicorn + httpx, structured as a mixin stack (StreamingMixin, AnthropicHandlerMixin, OpenAIHandlerMixin, GeminiHandlerMixin, BatchHandlerMixin). Its most important contract is byte-faithful forwarding: if Headroom didn't mutate the body, it forwards the original bytes verbatim; only a mutated body is re-serialized canonically. That's the right call for a transparent proxy — it avoids subtly breaking signatures or re-ordering keys on the 95% of requests it doesn't touch.</p>
+        <p>The Rust workspace (Cargo.toml L1-18) has four crates: headroom-core (shared foundation), headroom-proxy (a separate transparent reverse-proxy binary), headroom-py (the PyO3 cdylib exposed to Python as <code>headroom._core</code>), and headroom-parity (a fixture harness that compares Rust output against Python-recorded fixtures — a smart way to migrate a hot path without regressing behavior). The rationale (headroom-py/src/lib.rs L3-15):</p>
+        <div class="callout">
+          <p>ContentRouter compresses on the proxy's hot path… PyO3 calls cost ~microseconds; staying in-process is ~free.</p>
+        </div>
+        <p>The cost is real build complexity — maturin + PyO3 + a cdylib — and a hard failure mode: the proxy refuses to start without the Rust core unless <code>HEADROOM_REQUIRE_RUST_CORE=false</code> (server L190-251). The wrap commands (cli/wrap.py) are the slickest delivery: <code>headroom wrap claude</code> starts the proxy, sets <code>ANTHROPIC_BASE_URL</code>, and launches Claude unchanged; wrap codex writes a persistent model_provider block into ~/.codex/config.toml and restores from backup on unwrap. MCP registration is per-agent (mcp_registry/base.py L70-107).</p>
+
+        <h3>3.8 Memory and headroom learn</h3>
+        <p>Memory (memory.mdx) is <code>with_memory(client, user_id=…)</code>: it injects relevant past facts, asks the model to emit a <code>&lt;memory&gt;</code> block inline in its normal response (zero extra API calls), parses and stores it with embeddings + a full-text index, and strips the block before returning. Four scopes (User / Session / Agent / Turn), local SQLite default with optional Qdrant+Neo4j (proxy/memory_handler.py L118-163), a budgeted injection (1024 tokens / 10 entries / 0.3 similarity), and two-stage dedup (hint @0.75, auto-supersede @0.92).</p>
+        <p><code>headroom learn</code> (failure-learning.mdx) is the most original feature and the one least related to compression. It mines agent session logs (~/.claude/projects/*.jsonl, ~/.codex/sessions/*, Gemini chats) via a Scanner/Analyzer/Writer adapter pattern, and its "success correlation" finds not just what failed but what the model did next that worked — e.g. "Read axion-formats/.../FirstClassEntity.java failed, then the .scala file succeeded → the file is in axion-scala-common/." It writes marker-delimited blocks into CLAUDE.md / MEMORY.md / AGENTS.md. The analyzer is LLM-driven, not regex (learn/analyzer.py L1-13): it builds a digest and sends it to a model. (The cited examples reference axion/Spark repos — a tell that the author dogfoods this on real Scala/Spark codebases.)</p>
+
+        <h2>4 · Result — does the compression actually pay off?</h2>
+        <p>The headline numbers, the number the headline omits, the benchmark provenance problem, and who actually built it.</p>
+
+        <h3>4.1 The headline numbers, and the number the headline omits</h3>
+        <p>The README leads with savings like code search 92% (17,765→1,408), SRE debugging 92% (65,694→5,118), and a banner "60–95% fewer tokens." benchmarks.mdx adds a per-type table (JSON array → 90.6%, build log → 93.9%, grep results → 0%, Python source → 0%). Those JSON numbers are believable given §3.3.</p>
+        <p>But the most important table in the entire project is the production telemetry in the same doc — 50,000+ proxy sessions across 250+ instances:</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Percentile</th><th>Compression</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>P25</td><td>4.8%</td></tr>
+              <tr><td>Median</td><td>4.8%</td></tr>
+              <tr><td>P75</td><td>6.9%</td></tr>
+              <tr><td>Mean</td><td>11.3%</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The doc's own gloss: "Median compression is modest because many requests are short conversational turns." In other words, the typical real-world request is compressed ~5%; the 60–95% headline is the ceiling for arrays-of-dicts JSON, a minority of traffic. Fleet totals are real but modest: ~1.4 billion tokens saved, ~$4,000 total across 249 instances. The proxy overhead is the genuinely strong number — P50 52ms, negligible against multi-second inference, though the tail is heavy (P99 4,172ms; compressing a 1,000-item array is a ~2-second CPU operation).</p>
+        <p>To Headroom's real credit, all of this is in its own docs. limitations.mdx — "median 4.8%", "code passes through", "plain text adds latency (cost savings only)", "RAG document contexts: passthrough" — is one of the most honest limitations docs in the open-source LLM-tooling space. (That RAG line is itself a quiet correction to the project's own "compress… RAG chunks" framing.)</p>
+
+        <h3>4.2 The benchmark provenance problem</h3>
+        <p>A skeptical read of the benchmarks/ directory finds the weak link: the headline savings table has no single reproducible source. The exact README figures appear inline in README.md, but the scripts that would generate them are synthetic workload generators: compression_benchmark.py L94-110 labels its data "Realistic synthetic data"; the worst-case and adversarial scripts are all generate_* fabricators; and real_world_agent_benchmark.py claims "NOT synthetic data" while still being full of mock generators. There is a real eval suite (evals/suite_runner.py) that runs GSM8K / TruthfulQA / SQuAD / BFCL before-and-after — but its "accuracy preserved" verdict is a loose heuristic: true if F1 &gt; 0.8 OR semantic similarity &gt; 0.9 OR exact match (evals/core.py L332-338). So "accuracy is preserved" is supported for the suite's tasks, but the README's exact savings figures should be read as a curated showcase, not a one-command reproducible result.</p>
+
+        <h3>4.3 Engineering quality signals</h3>
+        <p>The repo is not a weekend project. CI runs ruff, mypy, pytest-with-coverage, Codecov, commitlint, and actionlint; the Rust side runs cargo audit and cargo deny; GitGuardian distinguishes fixture tokens from real secrets. The test footprint is 228 test files (~129K LOC), and a chunk are real behavioral tests that spin up subprocesses and tokenize actual output. The caveats: codecov.yml ignores tests/** entirely, many integration tests are environment-gated skipif, deny.toml is "intentionally permissive," and the changelog version history is jumpy (0.22.4 then 0.5.22 then 0.2.0) — a sign of fast, occasionally-messy iteration.</p>
+
+        <h3>4.4 Who actually built it — a healthier bus factor than most</h3>
+        <p>A frequent failure mode of viral v0.x projects is one author and a cliff. Headroom is less exposed than typical. GitHub contributor commit counts: chopratejas 930, JerrettDavis 250, gglucass 66, adryanev 34, Kayzo 14, mbachaud 10, pratikbin 9. The primary author is ~65% of commits — high, but with a genuine second contributor at ~17% and several more in double digits, this is a small team, not a solo act. The flip side: the flagship ML model (chopratejas/kompress-base) and the architectural direction are clearly one person's, so the conceptual bus factor is still concentrated even if the commit bus factor isn't.</p>
+
+        <h2>5 · Verdict — who should run this today</h2>
+        <p>Two strong yeses, two reasonable nos, five things to watch.</p>
+
+        <h3>5.1 Two strong yeses</h3>
+        <h4>JSON-tool-heavy agents</h4>
+        <p>Codebase search, SRE/log triage, data exploration, API-aggregation agents. This is exactly the regime SmartCrusher was built for, and the savings (40–90% on the tool-output tail) are real and immediate.</p>
+        <p><code>pip install headroom-ai &amp;&amp; headroom wrap claude</code> is a two-minute, reversible change; CCR means the model can always pull originals back within the session; byte-faithful forwarding won't subtly break the requests it doesn't compress. Apache-2.0, local-first.</p>
+        <h4>Engineers building a compression proxy</h4>
+        <p>The patterns here — content-aware routing with graceful passthrough, an information-theoretic array compressor (Kneedle + SimHash + zlib + unconditional anomaly retention), a reversible compress-cache-retrieve cache with an injected retrieval tool and BM25-within-blob, and a Rust hot path behind PyO3 with a parity-fixture harness — are the right shapes.</p>
+        <p>The Apache license lets you lift them.</p>
+
+        <h3>5.2 Two reasonable nos</h3>
+        <h4>Code-only or short-chat workloads</h4>
+        <p>Headroom correctly compresses almost nothing here — code passes through by design, sub-300-token messages are skipped, and your production median will look like the fleet's 4.8%.</p>
+        <p>There's no harm (52ms overhead, graceful passthrough), but there's little point.</p>
+        <h4>Anyone needing durable reversibility</h4>
+        <p>"Nothing is ever thrown away" is an in-memory cache with a 300-second default TTL scoped to the proxy process. It's a session-local reversibility mechanism, not durable storage.</p>
+        <p>If your workflow needs originals minutes-to-hours later, or across restarts, that's not what this is.</p>
+
+        <h3>5.3 What to watch out for</h3>
+        <ul>
+          <li><strong>Mentally re-map the pipeline.</strong> Ignore the "three-stage CacheAligner → ContentRouter → IntelligentContext" framing; the live system is ContentRouter with a detector in front. CacheAligner won't stabilize your cache prefix (it only warns), and old messages won't be dropped to fit a budget (that stage is retired).</li>
+          <li><strong>Set expectations from limitations.mdx, not the README.</strong> The 4.8% median and the per-content-type table are the honest numbers. The 60–95% banner is the JSON ceiling.</li>
+          <li><strong>Budget for the build.</strong> The Rust/PyO3 core is required by default; on an unsupported platform the proxy won't start unless you flip <code>HEADROOM_REQUIRE_RUST_CORE=false</code> (and then you lose the hot-path compressor).</li>
+          <li><strong>Pin your version.</strong> v0.22.x is moving fast with a jumpy changelog; pin <code>headroom-ai==0.22.4</code> rather than floating.</li>
+          <li><strong>Trust the install channel: PyPI, not npm.</strong> PyPI headroom-ai does ~100k downloads/month; the npm package is ~3.4k/month. Python is the real, maintained path.</li>
+        </ul>
+
+        <h2>6 · Alternatives — fair side-by-side</h2>
+        <p>The honest read of where Headroom sits versus the other 2026 contenders.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Dimension</th><th>Headroom</th><th>LLMLingua / -2</th><th>Native compaction</th><th>Mem0</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Shape</td><td>Proxy + SDK + MCP server</td><td>Python library</td><td>Built into provider APIs</td><td>Memory layer (SDK + hosted)</td></tr>
+              <tr><td>What it compresses</td><td>Tool outputs by content type</td><td>Whole prompts (token-level)</td><td>Prefix cache / oldest turns</td><td>Conversation facts</td></tr>
+              <tr><td>Method</td><td>Statistical + ModernBERT ONNX, no LLM on hot path</td><td>Small-LM perplexity / classifier</td><td>Provider heuristics</td><td>LLM extraction + vector store</td></tr>
+              <tr><td>Reversible?</td><td>Yes — CCR retrieval tool + BM25</td><td>No</td><td>No (dropped context is gone)</td><td>N/A (recall, not compress)</td></tr>
+              <tr><td>Drop-in transparency</td><td>Proxy + wrap for 5 agents</td><td>No (call the library)</td><td>Yes (it's the provider)</td><td>SDK wrapper</td></tr>
+              <tr><td>Provider-neutral</td><td>Yes</td><td>Yes</td><td>No (provider-locked)</td><td>Yes</td></tr>
+              <tr><td>Stars (Jun 2026)</td><td>7.6K</td><td>~5K</td><td>n/a</td><td>30K+</td></tr>
+              <tr><td>Language</td><td>Python + Rust (PyO3)</td><td>Python</td><td>n/a</td><td>Python</td></tr>
+              <tr><td>License</td><td>Apache-2.0</td><td>MIT</td><td>proprietary</td><td>Apache-2.0</td></tr>
+              <tr><td>Real-world median saving</td><td>~4.8% (90%+ on JSON arrays)</td><td>workload-dependent</td><td>prefix-hit-dependent</td><td>n/a</td></tr>
+              <tr><td>Honest limitations doc</td><td>Yes (excellent)</td><td>Research papers</td><td>Sparse</td><td>Moderate</td></tr>
+              <tr><td>Primary-author commit share</td><td>~65% (2nd dev ~17%)</td><td>Microsoft team</td><td>vendor</td><td>team</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>Honest read:</strong> Headroom and LLMLingua solve adjacent but different problems — LLMLingua compresses arbitrary prompts with a model in the loop and is the better fit when the fat is prose; Headroom compresses structured tool outputs statistically with no hot-path LLM and is the better fit for agentic JSON/log workloads, with reversibility as its differentiator. Native provider compaction is free and zero-effort but coarse and lock-in. Mem0 is complementary, not competitive — it remembers facts; Headroom (mostly) compresses tool data, though their memory features overlap. If your agent's bill is dominated by tool-output JSON and you want a drop-in proxy, Headroom is the strongest open-source option in 2026 — provided you calibrate expectations to its own telemetry.</p>
+
+        <h2>7 · References</h2>
+      </div>
+
+      <nav class="post-nav">
+        <a href="../blog.html">← All writing</a>
+        <a href="./sail.html">Sail →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

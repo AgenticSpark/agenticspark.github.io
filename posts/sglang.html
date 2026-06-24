@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SGLang · RadixAttention serving framework — Ethan</title>
+  <meta name="description" content="A STAR analysis of SGLang: the fast LLM and VLM serving framework built around RadixAttention, a Python generation DSL, structured decoding, and a rapidly moving SRT backend." />
+  <link rel="canonical" href="https://agenticspark.github.io/posts/sglang.html" />
+  <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Ethan" />
+  <meta property="og:title" content="SGLang · RadixAttention serving framework" />
+  <meta property="og:description" content="RadixAttention, structured generation, and the SGLang Runtime — a no-hype repo review." />
+  <meta property="og:url" content="https://agenticspark.github.io/posts/sglang.html" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="SGLang · RadixAttention serving framework" />
+  <meta name="twitter:description" content="A fast LLM and VLM serving framework built around RadixAttention, structured decoding, and SRT." />
+  <link rel="icon" type="image/svg+xml" href="../assets/img/favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/site.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="inner">
+      <a href="../" class="brand">Ethan</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../blog.html">Blog</a>
+        <a href="../about.html">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="reading wide">
+    <p class="back-link"><a href="../blog.html">← Blog</a></p>
+
+    <article class="post explainer">
+      <header class="post-head">
+        <span class="eyebrow">LLM serving frameworks · STAR analysis</span>
+        <h1 class="post-title">SGLang</h1>
+        <p class="post-dek">The serving framework that treats prompt structure as a systems problem, not just an API shape. SGLang's backend — the SGLang Runtime, or SRT — is built around <em>RadixAttention</em>: automatic cross-request KV-cache reuse through a radix tree of token prefixes. The front end adds a Python DSL for multi-call generation programs, while the backend has grown into a full OpenAI-compatible LLM and vision-LLM server with structured decoding, speculative decoding, quantization, and distributed execution. The speed story is real, but so is the churn: SGLang is young, aggressive, and in direct benchmark leapfrog mode with vLLM.</p>
+      </header>
+
+      <dl class="meta-grid">
+        <div><dt>Repo</dt><dd><a href="https://github.com/sgl-project/sglang" target="_blank" rel="noopener">sgl-project/<wbr>sglang</a></dd></div>
+        <div><dt>License</dt><dd>Apache-2.0</dd></div>
+        <div><dt>Stack</dt><dd>Python · CUDA/C++ · Rust · PyTorch · FastAPI</dd></div>
+        <div><dt>Version</dt><dd>v0.5.13 · pre-1.0</dd></div>
+        <div><dt>Stars</dt><dd>~29.5K · 6.7K forks</dd></div>
+        <div><dt>Reviewed</dt><dd>Jun 2026</dd></div>
+      </dl>
+
+      <div class="prose">
+        <h2>In short</h2>
+        <p>SGLang is what happens when prefix caching, structured generation, and a programmable prompting language are co-designed instead of bolted together.</p>
+        <div class="callout-grid">
+          <div class="callout">
+            <h4>What it is</h4>
+            <p>A high-performance serving framework for large language models and multimodal models. It exposes OpenAI-compatible endpoints through <code>python -m sglang.launch_server</code>, an offline engine, and native APIs, while the engine core lives under <code>python/sglang/srt/</code>. The headline backend mechanism is <strong>RadixAttention</strong>: finished and in-flight prompts are retained in a radix tree so later requests can reuse any shared token prefix, not just an exact whole prompt.</p>
+          </div>
+          <div class="callout">
+            <h4>Why it's interesting</h4>
+            <p>Most inference engines now cache prefixes; SGLang made that cache the organizing abstraction. The runtime pairs RadixAttention with continuous batching, paged attention, overlap scheduling, tensor / pipeline / expert / data parallelism, speculative decoding, quantization, and grammar-constrained output. The front end is unusual too: a Python DSL with <code>@function</code>, <code>gen()</code>, <code>choices</code>, <code>fork</code>, control flow, streaming, batching, and multimodal inputs.</p>
+          </div>
+          <div class="callout">
+            <h4>Biggest concerns</h4>
+            <p>It is younger and faster-moving than some peers, with ~3.6K open issues and APIs that change as the engine expands. There is heavy overlap with vLLM; the projects borrow ideas and leapfrog each other on benchmarks. The DSL is powerful but has a smaller ecosystem than OpenAI-compatible HTTP alone, and every speed claim is workload-dependent: shared prefixes, structured output, long context, model family, and hardware all matter.</p>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat"><span class="num">~5×</span><span class="label">Original throughput claim vs vLLM / Guidance tasks</span></div>
+          <div class="stat"><span class="num">400K+</span><span class="label">GPUs claimed across deployments</span></div>
+          <div class="stat"><span class="num">v0.5.13</span><span class="label">Latest GitHub release reviewed</span></div>
+          <div class="stat"><span class="num">29.5K</span><span class="label">Stars · 6.7K forks</span></div>
+          <div class="stat"><span class="num">3.6K</span><span class="label">Open issues · fast-moving</span></div>
+        </div>
+
+        <div class="callout accent">
+          <h4>Verdict</h4>
+          <p>SGLang is the most interesting vLLM peer because it is not merely another server wrapper: RadixAttention gives it a coherent cache model, and the DSL makes multi-call generation programs first-class. Reach for it when your workload has shared prefixes, structured outputs, long-context agents, VLM traffic, or RL rollout pressure. But pin versions, read release notes, and benchmark your exact model / quant / GPU tuple. The best SGLang numbers come from workloads that line up with its cache and scheduler assumptions; the worst surprises come from treating benchmark plots as universal constants.</p>
+        </div>
+
+        <h2>First — a generation program, not a prompt</h2>
+        <p>SGLang's name is the tell: it is a <em>Structured Generation Language</em> with a runtime under it, not just a server. The smallest program that shows why both halves exist:</p>
+        <pre><code>import sglang as sgl
+
+@sgl.function
+def triage(s, ticket):
+    s += sgl.system("You are a Spark support agent. Tools: [docs, logs].")
+    s += sgl.user(ticket)
+    s += sgl.assistant(sgl.gen("answer", max_tokens=256))
+
+sgl.set_default_backend(sgl.RuntimeEndpoint("http://localhost:30000"))
+state = triage.run(ticket="Why is my join spilling to disk?")
+print(state["answer"])</code></pre>
+        <p>The function reads like ordinary Python — system / user / assistant turns and a named <code>gen</code> field you read back as <code>state["answer"]</code> — but every call funnels into a runtime (SRT) you launch separately:</p>
+        <pre><code>$ python -m sglang.launch_server \
+      --model-path Qwen/Qwen2.5-7B-Instruct \
+      --tp 2 --grammar-backend xgrammar
+# server is up on http://0.0.0.0:30000  (OpenAI-compatible)</code></pre>
+        <p>That server also speaks the OpenAI API, so you never have to touch the DSL if you would rather not. Ask it for JSON and it will <em>guarantee</em> the shape, not just request it politely:</p>
+        <pre><code>$ curl localhost:30000/v1/chat/completions -d '{
+    "model": "Qwen/Qwen2.5-7B-Instruct",
+    "messages": [{"role": "user", "content": "Classify: disk spill on shuffle join"}],
+    "response_format": {"type": "json_schema", "json_schema": {
+        "name": "triage",
+        "schema": {"type": "object",
+          "properties": {"severity": {"enum": ["low", "high"]}, "area": {"type": "string"}},
+          "required": ["severity", "area"]}}}
+  }'</code></pre>
+        <p>Two front doors (DSL and OpenAI API), one runtime, and underneath both the same two bets: reuse KV cache across every call that shares a prefix, and fold constrained output into the decode loop. The rest of this piece is those two bets.</p>
+
+        <h2>1 · Situation — LLM programs stopped being single prompts</h2>
+        <p>The original SGLang problem statement is still the right one: real LLM applications are not one prompt, one generation, done. Agents branch. RAG pipelines reuse the same documents. Few-shot evaluation repeats the same examples across many questions. Multi-turn chat drags a growing history through every request. Structured extraction alternates between free generation and rigid syntax. Vision-language models add image tokens that are expensive to encode and easy to repeat.</p>
+        <p>That creates a systems opportunity. If many requests share substrings of their prompt, recomputing the KV cache for those substrings is waste. Prefix caching catches the simplest case — identical leading prompts — but complex programs create a richer set of partial overlaps: a shared system prompt, then different user questions; a shared few-shot block, then a batch of examples; a chat branch that diverges and later reuses the first turns; a tree-of-thought search that fans out from a common path.</p>
+        <p>SGLang's thesis is that the runtime should discover and exploit that structure automatically. The front end can express complex generation programs, but the backend should still accept full prompts and find reusable prefixes without hand-authored cache keys. That is the gap RadixAttention was built to fill.</p>
+
+        <h2>2 · Task — make structured generation fast without hiding the engine</h2>
+        <p>The task is broader than "serve tokens faster." SGLang wants to make the common hard cases fast: multi-call generation, constrained JSON, parallel branches, multimodal prompts, and high-throughput serving across GPU clusters.</p>
+        <p>That splits into two layers. The frontend language should let users write Pythonic generation programs with control flow and parallelism instead of building fragile prompt strings. The backend should run those programs, or plain OpenAI-compatible requests, while reusing KV cache across calls, scheduling continuously, and keeping the GPU fed. The pieces that matter most:</p>
+        <ol>
+          <li><strong>RadixAttention</strong> — a radix-tree KV cache for arbitrary shared token prefixes with eviction.</li>
+          <li><strong>SRT</strong> — the runtime under <code>python/sglang/srt/</code>, including scheduler, model executor, memory cache, grammar manager, and distributed paths.</li>
+          <li><strong>Structured output</strong> — JSON schema, regex, EBNF, and structural tags through XGrammar, Outlines, or llguidance.</li>
+          <li><strong>Production serving knobs</strong> — <code>--tp</code>, <code>--dp</code>, <code>--mem-fraction-static</code>, <code>--chunked-prefill-size</code>, <code>--grammar-backend</code>, quantization, speculative decoding, and hardware-specific attention backends.</li>
+        </ol>
+
+        <h2>3 · Action — what SGLang actually built</h2>
+        <p>Six lenses: RadixAttention, the Python DSL, structured decoding, the scheduler, parallel execution, and the quantization / model matrix.</p>
+
+        <h3>3.1 RadixAttention — prefix reuse as a radix tree</h3>
+        <p>RadixAttention stores token sequences and their KV-cache indices in a radix tree. In the current tree implementation, <code>python/sglang/srt/mem_cache/radix_cache.py</code> defines <code>RadixKey</code>, <code>TreeNode</code>, <code>RadixCache.match_prefix()</code>, <code>insert()</code>, <code>cache_finished_req()</code>, and <code>cache_unfinished_req()</code>. A request is represented by token ids plus an optional <code>extra_key</code> namespace, which keeps LoRA adapters or cache-salted requests from sharing state accidentally. Matching can be page-aligned through <code>page_size</code>, and the cache tracks access metadata for eviction.</p>
+        <p>The key difference from ordinary prefix caching is granularity. A radix tree can split edges when two sequences share only part of a stored segment, so the cache can reuse arbitrary common sub-prefixes that start at the root. In the original SGLang write-up, this covered chat histories, few-shot examples, self-consistency, and tree-of-thought branches. In modern serving terms, it is exactly the pattern that shows up in agent frameworks: a fixed instruction scaffold, a repeated tool schema, shared retrieved documents, then many divergent continuations.</p>
+        <figure class="diagram"><svg viewBox="0 0 760 560" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahsglang" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aasglang" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="230" y="20" width="300" height="58" rx="8" class="d-box"/><text x="380" y="44" text-anchor="middle" class="d-title">Incoming full prompts</text><text x="380" y="64" text-anchor="middle" class="d-sub">OpenAI API · DSL · offline engine</text>
+        <line x1="380" y1="78" x2="380" y2="105" class="d-edge" marker-end="url(#ahsglang)"/>
+        <rect x="210" y="106" width="340" height="58" rx="8" class="d-box"/><text x="380" y="130" text-anchor="middle" class="d-title">Tokenizer / request state</text><text x="380" y="150" text-anchor="middle" class="d-sub">token ids · extra_key · page_size</text>
+        <line x1="380" y1="164" x2="380" y2="191" class="d-edge-accent" marker-end="url(#aasglang)"/>
+        <rect x="190" y="192" width="380" height="64" rx="8" class="d-box-accent"/><text x="380" y="218" text-anchor="middle" class="d-title">RadixAttention cache</text><text x="380" y="238" text-anchor="middle" class="d-sub">match_prefix · split nodes · reuse KV indices</text>
+        <line x1="380" y1="256" x2="380" y2="283" class="d-edge" marker-end="url(#ahsglang)"/>
+        <rect x="210" y="284" width="340" height="58" rx="8" class="d-box"/><text x="380" y="308" text-anchor="middle" class="d-title">Scheduler batch</text><text x="380" y="328" text-anchor="middle" class="d-sub">prefill missing suffix · decode active tokens</text>
+        <line x1="380" y1="342" x2="380" y2="369" class="d-edge" marker-end="url(#ahsglang)"/>
+        <rect x="250" y="370" width="260" height="58" rx="8" class="d-box"/><text x="380" y="394" text-anchor="middle" class="d-title">Model executor</text><text x="380" y="414" text-anchor="middle" class="d-sub">attention backend · TP / EP / DP</text>
+        <line x1="380" y1="428" x2="380" y2="455" class="d-edge" marker-end="url(#ahsglang)"/>
+        <rect x="250" y="456" width="260" height="58" rx="8" class="d-box"/><text x="380" y="480" text-anchor="middle" class="d-title">Insert / evict</text><text x="380" y="500" text-anchor="middle" class="d-sub">cache_finished_req · LRU / LFU / SLRU</text>
+        <path d="M250 485 C105 485 105 224 187 224" fill="none" class="d-edge" stroke-dasharray="5 4" marker-end="url(#ahsglang)"/>
+        <text x="105" y="355" text-anchor="middle" class="d-elabel" transform="rotate(-90 105 355)">later request hits prefix</text>
+        </svg><figcaption><b>Full prompts in, shared prefixes out.</b> The caller sends ordinary prompts; SRT tokenizes, looks up the longest prefix in the radix tree, prefills only the missing suffix, decodes, then inserts reusable KV indices back into the tree for later requests.</figcaption></figure>
+        <p>Eviction is no longer a footnote. Current server arguments list <code>RADIX_EVICTION_POLICY_CHOICES</code> as <code>lru</code>, <code>lfu</code>, <code>slru</code>, and <code>priority</code>; the original design used LRU leaf eviction because GPU memory is finite and cached generations cannot grow without bound. The operational point is simple: RadixAttention is excellent when traffic clusters around shared prefixes, but cache hit rate is a workload property, not a constant.</p>
+        <p>A picture makes the "arbitrary shared sub-prefix" claim concrete. Three agent requests share a system prompt and tool schema; two of them also share a retrieved Spark-docs block; the questions then diverge. RadixAttention stores that as one tree and prefills only the unique tail of each request:</p>
+        <figure class="diagram"><svg viewBox="0 0 760 360" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahsg2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aasg2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="255" y="24" width="250" height="56" rx="8" class="d-box-accent"/><text x="380" y="48" text-anchor="middle" class="d-title">shared: system + tool schema</text><text x="380" y="68" text-anchor="middle" class="d-sub">cached once at the root</text>
+        <rect x="80"  y="140" width="240" height="52" rx="8" class="d-box-2"/><text x="200" y="163" text-anchor="middle" class="d-title">+ retrieved: Spark docs</text><text x="200" y="182" text-anchor="middle" class="d-sub">shared by 2 requests</text>
+        <rect x="440" y="140" width="240" height="52" rx="8" class="d-box-2"/><text x="560" y="163" text-anchor="middle" class="d-title">+ retrieved: Flink docs</text><text x="560" y="182" text-anchor="middle" class="d-sub">shared by 1 request</text>
+        <rect x="40"  y="262" width="150" height="48" rx="8" class="d-box"/><text x="115" y="285" text-anchor="middle" class="d-title">Q: tuning?</text><text x="115" y="303" text-anchor="middle" class="d-sub">unique tail</text>
+        <rect x="210" y="262" width="150" height="48" rx="8" class="d-box"/><text x="285" y="285" text-anchor="middle" class="d-title">Q: errors?</text><text x="285" y="303" text-anchor="middle" class="d-sub">unique tail</text>
+        <rect x="470" y="262" width="170" height="48" rx="8" class="d-box"/><text x="555" y="285" text-anchor="middle" class="d-title">Q: joins?</text><text x="555" y="303" text-anchor="middle" class="d-sub">unique tail</text>
+        <line x1="340" y1="80" x2="210" y2="138" class="d-edge-accent" marker-end="url(#aasg2)"/>
+        <line x1="420" y1="80" x2="550" y2="138" class="d-edge-accent" marker-end="url(#aasg2)"/>
+        <line x1="170" y1="192" x2="125" y2="260" class="d-edge" marker-end="url(#ahsg2)"/>
+        <line x1="230" y1="192" x2="285" y2="260" class="d-edge" marker-end="url(#ahsg2)"/>
+        <line x1="560" y1="192" x2="556" y2="260" class="d-edge" marker-end="url(#ahsg2)"/>
+        </svg><figcaption><b>RadixAttention as a tree.</b> The shared system prompt sits at the root; retrieved-document blocks are interior nodes shared by the requests that use them; only each question's unique tail is a leaf. A new request walks from the root, reuses every node it matches, and prefills just its leaf — so reuse extends to any sub-path, not only whole identical prompts.</figcaption></figure>
+        <p>The payoff is mechanical: if the shared path is 2,000 tokens and a new request adds 30, the engine prefills 30 tokens, not 2,030. Where ordinary prefix caching needs the <em>whole</em> leading prompt to match byte-for-byte, the radix tree reuses any segment that starts at the root — which is why chat histories, few-shot blocks, and tree-of-thought branches all hit.</p>
+
+        <h3>3.2 The front-end DSL — Python control flow around generation</h3>
+        <p>SGLang's name comes from the Structured Generation Language, not from the server alone. The DSL embeds generation in Python: decorate a function with <code>@function</code>, append <code>system()</code>, <code>user()</code>, and <code>assistant()</code> messages to a state, call <code>gen("name")</code> to produce named fields, and read them back with <code>s["name"]</code>. Normal Python <code>if</code> statements choose branches; <code>fork</code> creates parallel prompt copies; <code>run_batch</code> batches inputs; streaming returns partial text.</p>
+        <p>This is not just syntactic sugar. The frontend can express intra-program parallelism that the backend can batch, while RadixAttention can reuse the shared parts across those branches. The DSL can run against a local SGLang runtime or remote backends such as OpenAI-compatible APIs, which keeps it useful as a programming model even when the local runtime is not in play.</p>
+        <p>The caveat is ecosystem size. HTTP clients, OpenAI SDKs, LangChain-style adapters, and inference gateways are everywhere; a specialized generation DSL asks users to learn a smaller language. The upside is precision for complex workflows; the downside is that many teams will use only the server and never touch the frontend.</p>
+        <pre><code>@sgl.function
+def compare(s, topic):
+    s += sgl.user(f"Evaluate {topic}.")
+    pro, con = s.fork(2)              # two branches; shared prefix served from cache
+    pro[0] += sgl.user("Give only the strongest PRO.")
+    con[0] += sgl.user("Give only the strongest CON.")
+    pro[0] += sgl.assistant(sgl.gen("pro", max_tokens=64))
+    con[0] += sgl.assistant(sgl.gen("con", max_tokens=64))
+    return pro[0]["pro"], con[0]["con"]</code></pre>
+        <p>The <code>fork</code> splits the program into two branches the backend can batch together, while RadixAttention serves their shared prefix from one copy of the KV cache. This is the case the DSL expresses cleanly and a hand-built prompt string cannot: intra-program parallelism the runtime can actually exploit.</p>
+
+        <h3>3.3 Structured decoding — JSON, regex, EBNF, and structural tags</h3>
+        <p>SGLang has been unusually serious about constrained output. Current docs expose <code>json_schema</code>, <code>regex</code>, <code>ebnf</code>, and <code>structural_tag</code> through both OpenAI-compatible responses and native <code>/generate</code> sampling params. The server can use <code>--grammar-backend xgrammar</code>, <code>outlines</code>, <code>llguidance</code>, or <code>none</code>; <code>server_args.py</code> makes XGrammar one of the first-class grammar backend choices, and <code>grammar_manager.py</code> compiles and caches grammar objects per request.</p>
+        <p>The historical mechanism was jump-forward decoding with a compressed finite state machine. Instead of sampling one token for every deterministic syntax transition, SGLang identifies singular FSM paths and extends through them, then resumes model sampling at the next branch. That was reported as up to 2× lower latency and 2.5× higher throughput for JSON-style tasks in 2024, and the v0.4 release moved further by integrating XGrammar, claiming up to 10× faster JSON decoding than other open-source paths for some workloads.</p>
+        <p>Those numbers are not universal, but the architecture is important. Structured output is not treated as a slow validation layer after generation. It is part of the decoding loop, and because jump-forward can terminate and enqueue new work while RadixAttention reuses the previous KV cache, the cache design and grammar design reinforce each other.</p>
+        <pre><code># native endpoint: constrain output with a regex (compiled to an FSM once, then cached)
+$ curl localhost:30000/generate -d '{
+    "text": "Ticket #4821 severity:",
+    "sampling_params": {"regex": "(low|medium|high)", "max_new_tokens": 4}
+  }'
+# -> {"text": " high"}     no token outside the grammar can be sampled</code></pre>
+        <p>Because the grammar compiles to a finite-state machine, the deterministic stretches — the quotes, braces, and field names of a JSON object — are <em>jump-forwarded</em> rather than sampled one token at a time, so the model spends forward passes only on the genuinely free fields. Constraint stops being a tax on throughput and becomes a shortcut.</p>
+
+        <h3>3.4 Scheduler and batching — overlap the CPU with the GPU</h3>
+        <p>SRT's scheduler is not a small queue in front of PyTorch. <code>python/sglang/srt/managers/scheduler.py</code> owns tensor-parallel workers, radix cache interactions, grammar queues, LoRA loading, speculative paths, disaggregation, multimodal processing, metrics, sessions, and distributed rank state. Continuous batching is table stakes, but SGLang's v0.4 claim was a near zero-overhead batch scheduler: run the CPU scheduler one batch ahead and prepare metadata while the GPU executes the current batch.</p>
+        <p>The practical knob is <code>--disable-overlap-schedule</code>, because overlap scheduling is on by default for supported configurations. This matters most when CPU-side work — prefix matching, memory allocation, grammar preprocessing, request accounting — starts to show up in Nsight as gaps between GPU kernels. The implementation uses future tokens, CUDA events, and careful dependency resolution to hide that overhead. It is also exactly the kind of optimization that can break at the edges, which is why release notes frequently mention scheduler overhead, async value passing, CUDA graph coverage, and backend-specific fixes.</p>
+        <figure class="diagram"><svg viewBox="0 0 760 300" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahsg3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker></defs>
+        <text x="20" y="94" class="d-sub">CPU scheduler</text>
+        <text x="20" y="194" class="d-sub">GPU executor</text>
+        <rect x="120" y="70" width="130" height="40" rx="6" class="d-box-2"/><text x="185" y="94" text-anchor="middle" class="d-sub">prep B1</text>
+        <rect x="270" y="70" width="130" height="40" rx="6" class="d-box-2"/><text x="335" y="94" text-anchor="middle" class="d-sub">prep B2</text>
+        <rect x="420" y="70" width="130" height="40" rx="6" class="d-box-2"/><text x="485" y="94" text-anchor="middle" class="d-sub">prep B3</text>
+        <rect x="570" y="70" width="130" height="40" rx="6" class="d-box-2"/><text x="635" y="94" text-anchor="middle" class="d-sub">prep B4</text>
+        <rect x="270" y="170" width="130" height="40" rx="6" class="d-box-accent"/><text x="335" y="194" text-anchor="middle" class="d-sub">run B1</text>
+        <rect x="420" y="170" width="130" height="40" rx="6" class="d-box-accent"/><text x="485" y="194" text-anchor="middle" class="d-sub">run B2</text>
+        <rect x="570" y="170" width="130" height="40" rx="6" class="d-box-accent"/><text x="635" y="194" text-anchor="middle" class="d-sub">run B3</text>
+        <line x1="250" y1="110" x2="290" y2="168" class="d-edge" stroke-dasharray="4 4" marker-end="url(#ahsg3)"/>
+        <line x1="400" y1="110" x2="440" y2="168" class="d-edge" stroke-dasharray="4 4" marker-end="url(#ahsg3)"/>
+        <line x1="550" y1="110" x2="590" y2="168" class="d-edge" stroke-dasharray="4 4" marker-end="url(#ahsg3)"/>
+        <line x1="110" y1="250" x2="715" y2="250" class="d-edge" marker-end="url(#ahsg3)"/><text x="724" y="254" class="d-elabel">time</text>
+        <text x="380" y="284" text-anchor="middle" class="d-elabel">CPU prepares B(n+1) while the GPU runs B(n) — scheduler overhead hidden</text>
+        </svg><figcaption><b>Overlap scheduling.</b> SGLang runs the CPU scheduler one batch ahead of the GPU: while the executor runs batch B1, the scheduler is already matching prefixes, allocating memory, and preprocessing grammars for B2. The CPU bookkeeping that would otherwise show up as gaps between GPU kernels is hidden behind useful work — the v0.4 "near zero-overhead scheduler" claim.</figcaption></figure>
+
+        <h3>3.5 Parallelism, disaggregation, and scale-out</h3>
+        <p>SGLang now spans much more than single-node serving. Launch docs expose <code>--tp</code> for tensor parallelism, <code>--dp</code> through the router path for data parallelism, multi-node <code>--nnodes</code>, and specialized features such as expert parallelism, data-parallel attention, context parallelism, and prefill-decode / encoder-prefill-decode disaggregation. The README lists NVIDIA, AMD, Intel Xeon CPU, Google TPU, Ascend NPU, and Apple Metal paths; the repository language mix confirms this breadth: mostly Python, with significant MDX docs, Rust, CUDA, C++, shell, HIP, Metal, and CMake.</p>
+        <p>The router story is worth separating. The v0.4 cache-aware load balancer maintained an approximate radix tree of worker cache states so traffic could be routed toward the worker with the highest expected prefix hit rate. That is a direct consequence of making prefix cache state central: once cache hits matter this much, round-robin routing becomes wasteful. The router is Rust-heavy and packaged separately as <code>sglang-router</code>.</p>
+        <p>At the frontier-model end, release notes now mention Spec V2, DFlash, MTP, DeepSeek-specific MLA and sparse kernels, HiCache, heterogeneous CPU + GPU EPD disaggregation, and AMD MoRI. That is impressive, but it also means the project is carrying many specialized systems at once.</p>
+
+        <h3>3.6 Quantization, models, and the support matrix</h3>
+        <p>The quantization page is long because the matrix is real: FP8, MXFP4, MXFP8, blockwise INT8, W8A8 INT8/FP8, AWQ, GPTQ, compressed-tensors, Quark, auto-round, Marlin variants, GGUF, ModelOpt FP8/FP4, NVFP4 online, Petit NVFP4, bitsandbytes, torchao, and Ascend-specific paths. <code>server_args.py</code> mirrors that list in <code>QUANTIZATION_CHOICES</code>, while attention backends include Triton, FA3/FA4, FlashInfer, FlashMLA, TensorRT-LLM paths, Aiter, Wave, Intel AMX/XPU, Ascend, and more.</p>
+        <p>This is a strength if you are serving DeepSeek, Qwen, Llama, Kimi, GLM, Gemma, Mistral, VLMs, embeddings, reward models, LoRA adapters, or diffusion workloads on mixed infrastructure. It is also the reason operational validation matters. A model can work in BF16 on H100 and fail in FP4 on Blackwell with one attention backend; a VLM path can be correct while a structured-output path waits on grammar preprocessing; an AMD kernel can lag an NVIDIA path or vice versa. The feature breadth is not free.</p>
+
+        <h2>4 · Result — what you get when you deploy it</h2>
+        <p>Each capability mapped to what it delivers in practice.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Mechanism</th><th>What it buys you</th><th>Honest caveat</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>RadixAttention</td><td>Automatic KV reuse for shared prompt prefixes across requests and branches</td><td>Hit rate depends on traffic shape and routing</td></tr>
+              <tr><td>Python DSL</td><td>Control flow, <code>fork</code>, named generations, choices, and batching in one program</td><td>Smaller ecosystem than plain OpenAI-compatible HTTP</td></tr>
+              <tr><td>Structured decoding</td><td>JSON schema / regex / EBNF / structural tags in the decoding loop</td><td>Grammar compilation and tokenization boundaries are still edge surfaces</td></tr>
+              <tr><td>Overlap scheduler</td><td>Hides CPU scheduling, prefix matching, and metadata prep behind GPU work</td><td>Backend-dependent; release notes keep changing the details</td></tr>
+              <tr><td>TP / DP / EP / disaggregation</td><td>Scale from one GPU to multi-node, MoE, and prefill-decode split deployments</td><td>Interconnect, routing, and model architecture dominate gains</td></tr>
+              <tr><td>Quantization breadth</td><td>Fit bigger models and use FP8 / FP4 / AWQ / GPTQ / GGUF paths</td><td>Each quant × backend × GPU is a separate validation target</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>The central result is not just higher throughput. It is a more cache-aware way to think about LLM serving. If your application repeats context — system prompts, tool schemas, documents, chat history, few-shot examples — SGLang has a first-class mechanism for turning that repetition into saved prefill work. If your traffic is mostly unrelated short prompts at low concurrency, the advantage narrows and the operational complexity may not pay for itself.</p>
+
+        <h2>5 · Takeaways — how to read SGLang in 2026</h2>
+        <p>Five calibrated conclusions for an engineer choosing a serving stack.</p>
+        <h4>What's genuinely strong</h4>
+        <ul>
+          <li><strong>RadixAttention is a clean abstraction.</strong> Prefix reuse becomes a tree operation instead of a pile of manual cache keys.</li>
+          <li><strong>Structured output is a first-class path.</strong> XGrammar, regex, EBNF, JSON schema, and structural tags are integrated with serving rather than left to client-side retries.</li>
+          <li><strong>The runtime is ambitious.</strong> Overlap scheduling, speculative decoding, disaggregation, HiCache, and MoE-specific kernels show a project chasing real bottlenecks.</li>
+          <li><strong>Adoption appears broad.</strong> The project reports trillions of tokens per day, 400K+ GPUs, and major labs / clouds / infrastructure companies using it.</li>
+        </ul>
+        <h4>What to budget for</h4>
+        <ul>
+          <li><strong>Version churn.</strong> v0.5.13 is still pre-1.0; pin versions and expect flags and defaults to move.</li>
+          <li><strong>Benchmark locality.</strong> SGLang vs vLLM flips depending on shared prefix rate, structured decoding, model, quantization, GPU, and concurrency.</li>
+          <li><strong>The support matrix.</strong> The repo spans CUDA, HIP, Rust router code, TPUs, NPUs, Metal, diffusion, VLMs, and RL rollout paths; each path ages differently.</li>
+        </ul>
+        <h4>Use it when structure is the workload</h4>
+        <p>SGLang is strongest when the application has repeated context or generated structure: agents, RAG, multi-turn chat, self-consistency, JSON extraction, VLM extraction, RL rollouts, and shared-tool prompts.</p>
+        <h4>Do not confuse the DSL with the server</h4>
+        <p>You can use SGLang as a plain OpenAI-compatible server and ignore the frontend language. The DSL is a differentiator for complex programs, but the backend stands on its own.</p>
+        <h4>Treat speed claims as hypotheses</h4>
+        <p>The 5×, 10×, 1.9×, and 25×-style numbers in SGLang material are workload-specific. They are useful signals for where the project is optimized, not promises for your deployment.</p>
+
+        <h2>6 · vs Alternatives</h2>
+        <p>Where SGLang sits in the 2026 inference landscape.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Option</th><th>What it is</th><th>Relative to SGLang</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>SGLang</td><td>RadixAttention serving framework + Python generation DSL</td><td>This report. Strong on prefix-heavy, structured, agentic, VLM, and RL workloads</td></tr>
+              <tr><td>vLLM</td><td>PagedAttention serving engine, OpenAI API</td><td>Closest peer and safer default for many open-weight serving jobs; broader mindshare</td></tr>
+              <tr><td>TensorRT-LLM</td><td>NVIDIA's compiled inference engine</td><td>Best fit for fixed NVIDIA deployments chasing latency; less flexible and heavier to build</td></tr>
+              <tr><td>Hugging Face TGI</td><td>HF production text-generation server</td><td>Polished serving and HF integration; less cache/programming-language focused</td></tr>
+              <tr><td>LMDeploy</td><td>TurboMind / PyTorch serving toolkit</td><td>Strong NVIDIA path and deployment tools; smaller ecosystem than vLLM / SGLang</td></tr>
+              <tr><td>llama.cpp</td><td>GGUF CPU / edge / Apple Silicon runtime</td><td>Best local and edge story; not aimed at high-throughput datacenter batching</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <nav class="post-nav">
+        <a href="./vllm.html">← vLLM</a>
+        <a href="./tensorrt.html">TensorRT →</a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 Ethan</span>
+      <span>built static · no framework</span>
+      <a href="https://github.com/AgenticSpark">github →</a>
+    </div>
+  </footer>
+  <script src="../assets/js/site.js"></script>
+</body>
+</html>

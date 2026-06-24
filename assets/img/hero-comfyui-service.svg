@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2100 900" role="img" aria-label="A skill that babysits ComfyUI" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bg-cs" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#1f1e1c"/>
+      <stop offset="1" stop-color="#2a2724"/>
+    </linearGradient>
+    <linearGradient id="glow-cs" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#c96342" stop-opacity="0"/>
+      <stop offset=".5" stop-color="#c96342" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#c96342" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="2100" height="900" fill="url(#bg-cs)"/>
+
+  <!-- background grid -->
+  <g stroke="#3a3733" stroke-width="1" opacity=".55">
+    <path d="M0 200 H2100 M0 350 H2100 M0 500 H2100 M0 650 H2100"/>
+    <path d="M150 0 V900 M450 0 V900 M750 0 V900 M1050 0 V900 M1350 0 V900 M1650 0 V900 M1950 0 V900"/>
+  </g>
+
+  <!-- glow band -->
+  <rect x="0" y="430" width="2100" height="60" fill="url(#glow-cs)"/>
+
+  <!-- pipeline nodes -->
+  <g font-family="'JetBrains Mono', ui-monospace, monospace" font-size="20" fill="#faf9f5">
+    <!-- node A: client -->
+    <rect x="780" y="380" width="180" height="140" rx="14" fill="#1f1e1c" stroke="#c96342" stroke-width="2"/>
+    <text x="870" y="445" text-anchor="middle" fill="#c96342">claude</text>
+    <text x="870" y="475" text-anchor="middle" fill="#9c948a" font-size="16">client</text>
+
+    <!-- node B: skill -->
+    <rect x="1010" y="380" width="200" height="140" rx="14" fill="#faf9f5" stroke="#faf9f5"/>
+    <text x="1110" y="445" text-anchor="middle" fill="#1f1e1c" font-weight="600">comfyui-service</text>
+    <text x="1110" y="475" text-anchor="middle" fill="#7d7669" font-size="16">skill · 150 LOC</text>
+
+    <!-- node C: server -->
+    <rect x="1260" y="380" width="180" height="140" rx="14" fill="#1f1e1c" stroke="#3a3733" stroke-width="2"/>
+    <text x="1350" y="445" text-anchor="middle">comfyui</text>
+    <text x="1350" y="475" text-anchor="middle" fill="#9c948a" font-size="16">:8188</text>
+
+    <!-- connectors -->
+    <line x1="960" y1="450" x2="1010" y2="450" stroke="#c96342" stroke-width="2"/>
+    <line x1="1210" y1="450" x2="1260" y2="450" stroke="#c96342" stroke-width="2"/>
+    <!-- arrowheads -->
+    <polygon points="1008,444 1008,456 1018,450" fill="#c96342"/>
+    <polygon points="1258,444 1258,456 1268,450" fill="#c96342"/>
+
+    <!-- ops chips -->
+    <g fill="#7d7669" font-size="18">
+      <text x="200" y="240">health</text>
+      <text x="200" y="290">start</text>
+      <text x="200" y="340">stop</text>
+      <text x="200" y="390">restart</text>
+      <text x="200" y="440">gpu</text>
+    </g>
+    <g stroke="#3a3733" fill="none">
+      <rect x="170" y="220" width="160" height="38" rx="6"/>
+      <rect x="170" y="270" width="160" height="38" rx="6"/>
+      <rect x="170" y="320" width="160" height="38" rx="6"/>
+      <rect x="170" y="370" width="160" height="38" rx="6"/>
+      <rect x="170" y="420" width="160" height="38" rx="6"/>
+    </g>
+
+    <!-- 200 OK badge -->
+    <g>
+      <circle cx="1620" cy="450" r="6" fill="#7fb069"/>
+      <text x="1640" y="456" fill="#7fb069" font-size="22">200 OK</text>
+      <text x="1640" y="482" fill="#7d7669" font-size="14">/system_stats</text>
+    </g>
+  </g>
+
+  <!-- corner marks -->
+  <g font-family="'JetBrains Mono', ui-monospace, monospace" font-size="14" fill="#7d7669">
+    <text x="60" y="80">// skills · comfyui</text>
+    <text x="60" y="840">Ethan</text>
+    <text x="2040" y="840" text-anchor="end">2026-05-17</text>
+  </g>
+</svg>
