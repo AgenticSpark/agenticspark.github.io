@@ -84,6 +84,31 @@
           <p>Use OpenAI Evals to learn the patterns: datasets-as-code, registry-driven benchmark definitions, model-graded rubrics, and system-under-test abstraction. Do not automatically choose it for a new 2026 evaluation stack. For fresh production work, reach first for a modern harness or hosted product; come back to this repo when you need historical context, portable examples, or a compact mental model for what an eval actually is.</p>
         </div>
 
+        <h2>First — an eval you can run</h2>
+        <p>The fastest way to understand OpenAI Evals is to build the smallest possible one. An eval is three things: a JSONL dataset, a YAML registration, and a scoring class you usually do not have to write. Here is a complete includes-style eval that checks whether a model names the right capital city:</p>
+        <pre><code># evals/registry/data/capitals/samples.jsonl
+{"input": [{"role": "user", "content": "Capital of France?"}], "ideal": "Paris"}
+{"input": [{"role": "user", "content": "Capital of Japan?"}],  "ideal": "Tokyo"}
+{"input": [{"role": "user", "content": "Capital of Kenya?"}],  "ideal": "Nairobi"}</code></pre>
+        <p>Register it by mapping a public eval name to a built-in scorer class and pointing it at that data — no Python required:</p>
+        <pre><code># evals/registry/evals/capitals.yaml
+capitals:
+  id: capitals.dev.v0
+  metrics: [accuracy]
+capitals.dev.v0:
+  class: evals.elsuite.basic.includes:Includes
+  args:
+    samples_jsonl: capitals/samples.jsonl</code></pre>
+        <p>Then run it against any completion function and read the score off the final report:</p>
+        <pre><code>$ oaieval gpt-4o-mini capitals
+[setup] fetching 3 samples from capitals/samples.jsonl
+[run]   evaluating across EVALS_THREADS=10 workers
+...
+Final report:
+{ "accuracy": 1.0 }
+Per-sample events: /tmp/evallogs/2406...capitals.jsonl</code></pre>
+        <p>Three files, one command, and a number you can diff in CI. That triangle — <em>data in JSONL, binding in YAML, scorer in code</em> — is the entire mental model. Everything below is a variation on it: swap the scorer for a model-graded rubric, swap the model for a retrieval pipeline, or swap the single eval for a named set.</p>
+
         <h2>1 · Situation — no shared, reproducible way to measure LLM quality</h2>
         <p>Before the GPT-4 era, much of practical LLM evaluation was private, ad hoc, and conversational. Teams had prompt collections, demo scripts, favorite failure cases, or benchmark spreadsheets. They could say "the new model feels better at legal drafting" or "this prompt regressed on extraction," but the evidence often lived outside code review and outside repeatable automation.</p>
         <p>Classic NLP benchmarks still mattered, but they did not cover the new workloads people were shipping: assistants following messy instructions, agents calling tools, summarizers preserving factual constraints, chain-of-thought prompts with variable surface forms, and applications where the expected answer was not a single string. The product question was not only "does the model know the answer?" It was "does this model, through this prompt or pipeline, satisfy the behavior my system depends on?"</p>
@@ -124,15 +149,89 @@
         <h3>3.2 basic/deterministic evals</h3>
         <p>The basic templates are deliberately humble. <code>basic/match.py:Match</code> calls one completion function at temperature 0 and checks whether the sampled answer starts with one of the reference strings. <code>basic/includes.py:Includes</code> accepts an answer if any reference string appears in the completion. <code>basic/fuzzy_match.py:FuzzyMatch</code> handles looser containment-style matching; <code>basic/json_match.py:JsonMatch</code> compares parsed JSON while ignoring key order and whitespace outside values.</p>
         <p>These are not glamorous metrics, but they are useful for the right shape of task: multiple choice, short factual QA, classification, extraction with constrained outputs, and regression tests for prompts that should produce a narrow answer. They also make an important engineering claim: if a deterministic scorer is sufficient, use it. Do not pay a grader model to create ambiguity you do not need.</p>
+        <pre><code># the four deterministic scorers, by how they compare completion vs ideal:
+# Match      -> completion must START WITH an ideal string
+# Includes   -> any ideal string appears ANYWHERE in the completion
+# FuzzyMatch -> normalized containment, checked in either direction
+# JsonMatch  -> json.loads(completion) equals ideal, order/whitespace-insensitive
+
+# a JsonMatch sample — graded structurally, not as raw text:
+{"input": [{"role": "user", "content": "Return name and age as JSON."}],
+ "ideal": "{\"name\": \"Ada\", \"age\": 36}"}</code></pre>
 
         <h3>3.3 model-graded evals &amp; grading prompts</h3>
         <p>The historically loud idea is the model-graded template. <code>modelgraded/classify.py:ModelBasedClassify</code> treats the last completion function as the grader, runs the policy model to produce a completion, formats a grading prompt, asks the grader for a constrained choice, and aggregates choices and scores. The registry under <code>evals/registry/modelgraded/</code> contains reusable grading specs such as <code>fact.yaml</code>, where a submitted answer is compared to an expert answer and classified into choices <code>A</code> through <code>E</code>.</p>
         <p>This pattern solved a real problem: open-ended answers have many correct phrasings. A factual consistency answer can be a subset, superset, exact match, harmless paraphrase, or contradiction. Encoding that in string matching is brittle. Asking a strong model to apply a rubric can scale judgment across thousands of samples.</p>
         <p>It also creates a new measurement problem. The grader is a model with its own biases, calibration drift, prompt sensitivity, and randomness. A model can over-reward eloquence, punish terse correct answers, miss domain-specific facts, or favor outputs shaped like its own training distribution. The evaluation prompt must force parseable choices, but parseable does not mean true. The repo made model grading practical; it did not make it epistemically free.</p>
+        <pre><code># evals/registry/modelgraded/fact.yaml  (shape)
+fact:
+  prompt: |-
+    You are comparing a submitted answer to an expert answer.
+      [Question]:   {input}
+      [Expert]:     {ideal}
+      [Submission]: {completion}
+    Compare only the factual content; ignore style and phrasing. Pick one:
+      (A) Submission is a SUBSET of the expert answer, fully consistent
+      (B) Submission is a SUPERSET of the expert answer, fully consistent
+      (C) Submission contains the SAME details as the expert answer
+      (D) Submission DISAGREES with the expert answer
+      (E) Answers differ, but the differences do not matter for factuality
+    Respond with a single letter.
+  choice_strings: ABCDE
+  choice_scores: { A: 1.0, B: 1.0, C: 1.0, D: 0.0, E: 1.0 }</code></pre>
+        <figure class="diagram"><svg viewBox="0 0 760 320" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahev2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aaev2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="30" y="46" width="150" height="64" rx="8" class="d-box"/><text x="105" y="74" text-anchor="middle" class="d-title">sample</text><text x="105" y="95" text-anchor="middle" class="d-sub">input, ideal</text>
+        <rect x="220" y="46" width="160" height="64" rx="8" class="d-box-accent"/><text x="300" y="74" text-anchor="middle" class="d-title">policy model</text><text x="300" y="95" text-anchor="middle" class="d-sub">generate answer</text>
+        <rect x="420" y="46" width="150" height="64" rx="8" class="d-box"/><text x="495" y="74" text-anchor="middle" class="d-title">completion</text><text x="495" y="95" text-anchor="middle" class="d-sub">submission</text>
+        <line x1="180" y1="78" x2="218" y2="78" class="d-edge" marker-end="url(#ahev2)"/>
+        <line x1="380" y1="78" x2="418" y2="78" class="d-edge-accent" marker-end="url(#aaev2)"/>
+        <rect x="220" y="150" width="200" height="72" rx="10" class="d-group"/><text x="320" y="180" text-anchor="middle" class="d-title">grading prompt</text><text x="320" y="201" text-anchor="middle" class="d-sub">input + ideal + completion</text>
+        <rect x="470" y="148" width="160" height="74" rx="8" class="d-box-accent"/><text x="550" y="178" text-anchor="middle" class="d-title">grader model</text><text x="550" y="199" text-anchor="middle" class="d-sub">apply rubric</text>
+        <rect x="470" y="248" width="160" height="58" rx="8" class="d-box"/><text x="550" y="274" text-anchor="middle" class="d-title">choice A-E</text><text x="550" y="294" text-anchor="middle" class="d-sub">mapped to score</text>
+        <path d="M105 110 C105 136 215 130 250 150" fill="none" class="d-edge" stroke-dasharray="5 4" marker-end="url(#ahev2)"/>
+        <path d="M495 110 C495 136 415 130 390 150" fill="none" class="d-edge-accent" stroke-dasharray="5 4" marker-end="url(#aaev2)"/>
+        <line x1="420" y1="186" x2="468" y2="186" class="d-edge" marker-end="url(#ahev2)"/>
+        <line x1="550" y1="222" x2="550" y2="246" class="d-edge-accent" marker-end="url(#aaev2)"/>
+        <text x="168" y="132" text-anchor="middle" class="d-elabel">ideal</text>
+        <text x="452" y="132" text-anchor="middle" class="d-elabel">submission</text>
+        </svg><figcaption><b>Model-graded scoring.</b> The policy model answers, then its completion is dropped into a grading prompt alongside the question and the reference answer; a (pinned) grader model returns one constrained choice, which maps to a numeric score. Powerful — but the grader's bias and variance now live inside your metric.</figcaption></figure>
 
         <h3>3.4 completion functions / system-under-test abstraction</h3>
         <p>The most durable engineering abstraction is the completion function. The docs describe a <code>CompletionFn</code> as a generalization of model completion: input is text or a chat conversation; output is a list of text completions. The implementation under test can be an OpenAI model, a LangChain LLM wrapper, a chain, a retrieval pipeline, or a tool-using system that does work before returning an answer.</p>
         <p>That abstraction is why the repo is more interesting than an OpenAI benchmark runner. The CLI can instantiate an OpenAI chat model dynamically, but completion functions can also be registered in YAML under <code>evals/registry/completion_fns/</code>; the docs show <code>LangChainLLMCompletionFn</code> and a custom <code>MyCompletionFn</code> loaded via <code>--registry_path</code>. The concept aged well because modern evals still need to test systems, not just base models.</p>
+        <pre><code># register any system-under-test as a completion function in YAML:
+# evals/registry/completion_fns/my_pipeline.yaml
+my_rag_pipeline:
+  class: my_module:RagCompletionFn
+  args: { top_k: 5 }
+
+# the protocol: __call__(prompt) -> result whose .get_completions() is list[str]
+class RagCompletionFn:
+    def __init__(self, top_k=5, **kw):
+        self.top_k = top_k
+    def __call__(self, prompt, **kw):
+        docs   = retrieve(prompt, k=self.top_k)    # your retrieval
+        answer = call_llm(format(prompt, docs))    # your model call
+        return CompletionResult(answer)            # .get_completions() -> [answer]
+
+# evaluate the whole pipeline with the same CLI and the same eval:
+# oaieval my_rag_pipeline capitals --registry_path ./my_registry</code></pre>
+        <figure class="diagram"><svg viewBox="0 0 760 320" role="img" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ahev3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow"/></marker><marker id="aaev3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="d-arrow-accent"/></marker></defs>
+        <rect x="30" y="118" width="160" height="84" rx="8" class="d-box"/><text x="110" y="152" text-anchor="middle" class="d-title">eval harness</text><text x="110" y="173" text-anchor="middle" class="d-sub">oaieval / oaievalset</text>
+        <rect x="250" y="115" width="190" height="90" rx="8" class="d-box-accent"/><text x="345" y="150" text-anchor="middle" class="d-title">CompletionFn</text><text x="345" y="171" text-anchor="middle" class="d-sub">prompt -&gt; completions</text>
+        <line x1="190" y1="160" x2="248" y2="160" class="d-edge" marker-end="url(#ahev3)"/>
+        <rect x="496" y="38" width="234" height="256" rx="10" class="d-group"/><text x="613" y="30" text-anchor="middle" class="d-sub">system under test</text>
+        <rect x="512" y="56" width="202" height="48" rx="6" class="d-box"/><text x="613" y="85" text-anchor="middle" class="d-title">OpenAI model</text>
+        <rect x="512" y="114" width="202" height="48" rx="6" class="d-box"/><text x="613" y="143" text-anchor="middle" class="d-title">LangChain chain</text>
+        <rect x="512" y="172" width="202" height="48" rx="6" class="d-box"/><text x="613" y="201" text-anchor="middle" class="d-title">retrieval pipeline</text>
+        <rect x="512" y="230" width="202" height="48" rx="6" class="d-box"/><text x="613" y="259" text-anchor="middle" class="d-title">tool-using agent</text>
+        <line x1="440" y1="160" x2="510" y2="80" class="d-edge-accent" marker-end="url(#aaev3)"/>
+        <line x1="440" y1="160" x2="510" y2="138" class="d-edge-accent" marker-end="url(#aaev3)"/>
+        <line x1="440" y1="160" x2="510" y2="196" class="d-edge-accent" marker-end="url(#aaev3)"/>
+        <line x1="440" y1="160" x2="510" y2="254" class="d-edge-accent" marker-end="url(#aaev3)"/>
+        <path d="M540 294 C380 300 200 292 112 204" fill="none" class="d-edge" stroke-dasharray="5 4" marker-end="url(#ahev3)"/>
+        <text x="330" y="312" text-anchor="middle" class="d-elabel">completions returned as list[str]</text>
+        </svg><figcaption><b>One interface, many systems under test.</b> Because the harness only depends on the <code>CompletionFn</code> protocol — <code>prompt -&gt; list[str]</code> — the same eval can score a bare model, a LangChain chain, a retrieval pipeline, or a tool-using agent. You evaluate the product path, not just the base model.</figcaption></figure>
 
         <h3>3.5 the registry &amp; oaieval/oaievalset</h3>
         <p>The registry is split across <code>evals/registry/evals/</code>, <code>evals/registry/data/</code>, <code>evals/registry/modelgraded/</code>, <code>evals/registry/completion_fns/</code>, and <code>evals/registry/eval_sets/</code>. The data directory is large enough that the README calls out Git LFS and selective pulls for individual eval datasets. This is not an incidental folder; it is the public corpus that made the project feel like a commons.</p>
