@@ -252,6 +252,37 @@ img { max-width: 100%; display: block; height: auto; }
   border-color: var(--border-strong);
   transform: translateY(-1px);
 }
+
+/* ---- Tools: password generator ---- */
+.tool-shell { max-width: 760px; margin: 0 auto var(--s-9); }
+.password-panel { padding: clamp(var(--s-5), 5vw, var(--s-7)); }
+.password-output-row { display: grid; grid-template-columns: 1fr auto; gap: var(--s-3); margin-bottom: var(--s-6); }
+.password-output {
+  width: 100%; min-width: 0; border: 1px solid var(--border-strong); border-radius: var(--radius-md);
+  background: var(--bg); color: var(--text); padding: var(--s-3) var(--s-4); font: 500 var(--fs-3)/1.4 var(--font-mono);
+}
+.control-group { border: 0; padding: 0; margin: 0 0 var(--s-6); }
+.control-group legend, .range-label { display: flex; justify-content: space-between; width: 100%; margin-bottom: var(--s-3); font-weight: 600; }
+.range-label output { font-family: var(--font-mono); color: var(--accent-ink); }
+input[type="range"] { width: 100%; accent-color: var(--accent-ink); }
+.check-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
+.check-option { display: flex; align-items: center; gap: var(--s-2); min-height: 44px; cursor: pointer; }
+.check-option input { width: 18px; height: 18px; accent-color: var(--accent-ink); }
+.tool-note { margin: var(--s-5) 0 0; color: var(--text-muted); font-size: var(--fs-2); }
+
+/* ---- Careers: 10-column company gallery ---- */
+.gallery-toolbar { display: flex; align-items: end; justify-content: space-between; gap: var(--s-4); margin-bottom: var(--s-5); }
+.search-field { display: grid; gap: var(--s-2); max-width: 360px; width: 100%; font-weight: 600; font-size: var(--fs-2); }
+.search-field input { min-height: 44px; padding: var(--s-2) var(--s-3); border: 1px solid var(--border-strong); border-radius: var(--radius-md); background: var(--bg-elev-1); color: var(--text); font: inherit; }
+.company-count { color: var(--text-dim); font: var(--fs-2) var(--font-mono); white-space: nowrap; }
+.company-grid { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: var(--s-3); margin-bottom: var(--s-9); }
+.company-tile { min-width: 0; min-height: 112px; padding: var(--s-3) var(--s-2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--s-2); text-align: center; color: var(--text); background: var(--bg-elev-1); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-1); transition: transform var(--t), border-color var(--t), box-shadow var(--t); }
+.company-tile:hover { color: var(--text); transform: translateY(-2px); border-color: var(--accent); box-shadow: var(--shadow-2); }
+.company-mark { width: 38px; height: 38px; display: grid; place-items: center; flex: none; border-radius: 50%; background: var(--bg-elev-2); color: var(--accent-ink); border: 1px solid var(--border); font: 600 var(--fs-1) var(--font-mono); }
+.company-name { overflow-wrap: anywhere; font-size: .7rem; line-height: 1.25; font-weight: 600; }
+@media (max-width: 1000px) { .company-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (max-width: 680px) { .company-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .gallery-toolbar { align-items: stretch; flex-direction: column; } }
+@media (max-width: 420px) { .company-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .password-output-row { grid-template-columns: 1fr; } .check-grid { grid-template-columns: 1fr; } }
 /* Keep button styling intact when buttons sit inside .prose (404, contact panel) */
 .prose a.btn { border: 1px solid transparent; }
 .prose a.btn-primary,
