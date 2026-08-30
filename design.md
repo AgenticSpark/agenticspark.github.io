@@ -263,7 +263,7 @@ Shadows are subtle — they exist to lift cards off the background, not announce
 
 ### 8.17 Company gallery
 - Desktop uses a compact fixed 10-column grid, stepping down to 6, 3, and 2 columns.
-- Typographic initial marks avoid third-party logo assets while preserving the editorial style.
+- Company favicons are fetched through DuckDuckGo's privacy-oriented favicon cache; initials remain visible if an icon fails.
 - Tiles reuse elevated surfaces, borders, shadows, and terracotta focus/hover treatments.
 
 ---
@@ -283,7 +283,7 @@ Shadows are subtle — they exist to lift cards off the background, not announce
 /                   index.html        Home: text intro + recent writing
 /about.html         About / résumé / contact
 /blog.html          Writing index — all posts, tagged paper / repo / practice
-/careers.html       100-company interview and career explorer
+/careers/           100-company interview and career explorer
 /password.html      Local cryptographically secure password generator
 /posts/comfyui.html ComfyUI LoRA style matrix (embeds /assets/gallery/*)   · practice
 /posts/elf.html              ELF · Embedded Language Flows                  · paper

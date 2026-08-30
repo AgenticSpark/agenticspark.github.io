@@ -94,16 +94,16 @@
   // Top 100 company tags ordered by thread count in the 1Point3Acres company
   // directory, captured 2026-08-30. Each tile links to its corresponding tag.
   const companies = [
-    ['Amazon',56],['Google',36],['Meta',399],['Microsoft',268],['Bytedance',4142],['LinkedIn',415],['Uber',948],['Bloomberg',334],['Apple',313],['Airbnb',942],
-    ['DoorDash',1829],['Snapchat',802],['Twitter',467],['Oracle',429],['AkunaCapital',677],['Citadel',692],['Pinterest',1012],['NVIDIA',518],['Stripe',2126],['Roblox',1873],
-    ['Capital One',2732],['Salesforce',499],['Wayfair',1093],['IBM',513],['Robinhood',2899],['Yelp',365],['Goldman Sachs',8755],['Databricks',1890],['JPMorgan Chase',1048],['Dropbox',638],
-    ['Two Sigma',1247],['Walmart Global Tech',1322],['eBay',481],['Lyft',1725],['Cisco',378],['OpenAI',9407],['Expedia',460],['MathWorks',475],['Indeed',749],['Coinbase',2869],
-    ['VMware',333],['Snowflake',2246],['Tesla',1193],['Yahoo',379],['Visa',1118],['Pure Storage',763],['Intuit',1005],['Instacart',3356],['PayPal',542],['Square',482],
-    ['Quora',983],['Hudson River Trading',8698],['Zillow',505],['TuSimple',2013],['Alibaba',1328],['Palantir',847],['Adobe',1016],['Wish',48],['Epic Systems',468],['Netflix',1418],
-    ['IMC',2057],['Anthropic',9878],['Coursera',988],['McKinsey',504],['SIG',905],['WePay',1228],['Optiver',8331],['Huawei',797],['Qualcomm',331],['DRW',2833],
-    ['SAP',478],['Intel',358],['Affirm',2173],['Rippling',7716],['Waymo',3330],['Morgan Stanley',3491],['BlackRock',1027],['TripAdvisor',484],['Flexport',1827],['Tencent',53],
-    ['LiveRamp',464],['Twilio',1205],['Atlassian',2480],['C3.ai',7990],['Compass',2324],['Confluent',4152],['Nuro',2709],['Coupang',2160],['WeRide',4382],['Zoox',2978],
-    ['Cruise',2674],['Houzz',978],['Reddit',3119],['Jane Street',2069],['Didi',2665],['Point72 Asset Management',1529],['Zenefits',1139],['Rubrik',1703],['Samsara',2992],['Qualtrics',1152]
+    ['Amazon',56,'amazon.com'],['Google',36,'google.com'],['Meta',399,'meta.com'],['Microsoft',268,'microsoft.com'],['Bytedance',4142,'bytedance.com'],['LinkedIn',415,'linkedin.com'],['Uber',948,'uber.com'],['Bloomberg',334,'bloomberg.com'],['Apple',313,'apple.com'],['Airbnb',942,'airbnb.com'],
+    ['DoorDash',1829,'doordash.com'],['Snapchat',802,'snapchat.com'],['Twitter',467,'x.com'],['Oracle',429,'oracle.com'],['AkunaCapital',677,'akunacapital.com'],['Citadel',692,'citadel.com'],['Pinterest',1012,'pinterest.com'],['NVIDIA',518,'nvidia.com'],['Stripe',2126,'stripe.com'],['Roblox',1873,'roblox.com'],
+    ['Capital One',2732,'capitalone.com'],['Salesforce',499,'salesforce.com'],['Wayfair',1093,'wayfair.com'],['IBM',513,'ibm.com'],['Robinhood',2899,'robinhood.com'],['Yelp',365,'yelp.com'],['Goldman Sachs',8755,'goldmansachs.com'],['Databricks',1890,'databricks.com'],['JPMorgan Chase',1048,'jpmorganchase.com'],['Dropbox',638,'dropbox.com'],
+    ['Two Sigma',1247,'twosigma.com'],['Walmart Global Tech',1322,'walmart.com'],['eBay',481,'ebay.com'],['Lyft',1725,'lyft.com'],['Cisco',378,'cisco.com'],['OpenAI',9407,'openai.com'],['Expedia',460,'expedia.com'],['MathWorks',475,'mathworks.com'],['Indeed',749,'indeed.com'],['Coinbase',2869,'coinbase.com'],
+    ['VMware',333,'vmware.com'],['Snowflake',2246,'snowflake.com'],['Tesla',1193,'tesla.com'],['Yahoo',379,'yahoo.com'],['Visa',1118,'visa.com'],['Pure Storage',763,'purestorage.com'],['Intuit',1005,'intuit.com'],['Instacart',3356,'instacart.com'],['PayPal',542,'paypal.com'],['Square',482,'squareup.com'],
+    ['Quora',983,'quora.com'],['Hudson River Trading',8698,'hudsonrivertrading.com'],['Zillow',505,'zillow.com'],['TuSimple',2013,'tusimple.com'],['Alibaba',1328,'alibabagroup.com'],['Palantir',847,'palantir.com'],['Adobe',1016,'adobe.com'],['Wish',48,'wish.com'],['Epic Systems',468,'epic.com'],['Netflix',1418,'netflix.com'],
+    ['IMC',2057,'imc.com'],['Anthropic',9878,'anthropic.com'],['Coursera',988,'coursera.org'],['McKinsey',504,'mckinsey.com'],['SIG',905,'sig.com'],['WePay',1228,'wepay.com'],['Optiver',8331,'optiver.com'],['Huawei',797,'huawei.com'],['Qualcomm',331,'qualcomm.com'],['DRW',2833,'drw.com'],
+    ['SAP',478,'sap.com'],['Intel',358,'intel.com'],['Affirm',2173,'affirm.com'],['Rippling',7716,'rippling.com'],['Waymo',3330,'waymo.com'],['Morgan Stanley',3491,'morganstanley.com'],['BlackRock',1027,'blackrock.com'],['TripAdvisor',484,'tripadvisor.com'],['Flexport',1827,'flexport.com'],['Tencent',53,'tencent.com'],
+    ['LiveRamp',464,'liveramp.com'],['Twilio',1205,'twilio.com'],['Atlassian',2480,'atlassian.com'],['C3.ai',7990,'c3.ai'],['Compass',2324,'compass.com'],['Confluent',4152,'confluent.io'],['Nuro',2709,'nuro.ai'],['Coupang',2160,'coupang.com'],['WeRide',4382,'weride.ai'],['Zoox',2978,'zoox.com'],
+    ['Cruise',2674,'getcruise.com'],['Houzz',978,'houzz.com'],['Reddit',3119,'reddit.com'],['Jane Street',2069,'janestreet.com'],['Didi',2665,'didiglobal.com'],['Point72 Asset Management',1529,'point72.com'],['Zenefits',1139,'zenefits.com'],['Rubrik',1703,'rubrik.com'],['Samsara',2992,'samsara.com'],['Qualtrics',1152,'qualtrics.com']
   ];
   const search = document.querySelector('[data-company-search]');
   const count = document.querySelector('[data-company-count]');
@@ -111,7 +111,7 @@
   function render(query = '') {
     const normalized = query.trim().toLowerCase();
     const visible = companies.filter(([name]) => name.toLowerCase().includes(normalized));
-    grid.replaceChildren(...visible.map(([name, tagId]) => {
+    grid.replaceChildren(...visible.map(([name, tagId, domain]) => {
       const link = document.createElement('a');
       link.className = 'company-tile';
       link.href = `https://www.1point3acres.com/bbs/tag-${tagId}-1.html`;
@@ -122,6 +122,23 @@
       mark.className = 'company-mark';
       mark.setAttribute('aria-hidden', 'true');
       mark.textContent = initials(name);
+      const logo = document.createElement('img');
+      logo.className = 'company-logo';
+      logo.alt = '';
+      logo.loading = 'lazy';
+      logo.decoding = 'async';
+      logo.referrerPolicy = 'no-referrer';
+      logo.addEventListener('load', () => mark.classList.add('has-logo'));
+      logo.addEventListener('error', () => {
+        if (logo.dataset.fallback !== 'google') {
+          logo.dataset.fallback = 'google';
+          logo.src = `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+        } else {
+          logo.remove();
+        }
+      });
+      logo.src = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
+      mark.append(logo);
       const label = document.createElement('span');
       label.className = 'company-name';
       label.textContent = name;
