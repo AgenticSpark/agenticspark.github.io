@@ -91,28 +91,30 @@
 (function () {
   const grid = document.querySelector('[data-company-grid]');
   if (!grid) return;
+  // Top 100 company tags ordered by thread count in the 1Point3Acres company
+  // directory, captured 2026-08-30. Each tile links to its corresponding tag.
   const companies = [
-    'Amazon','Apple','Microsoft','Alphabet','Meta','NVIDIA','Tesla','JPMorgan Chase','Walmart','ExxonMobil',
-    'UnitedHealth Group','Visa','Mastercard','Procter & Gamble','Johnson & Johnson','Home Depot','Costco','Netflix','Adobe','Salesforce',
-    'Oracle','Cisco','IBM','Intel','AMD','Qualcomm','Broadcom','ServiceNow','Uber','Airbnb',
-    'DoorDash','Snowflake','Palantir','Datadog','Cloudflare','Shopify','Block','PayPal','Stripe','Intuit',
-    'Goldman Sachs','Morgan Stanley','Bank of America','Citigroup','Wells Fargo','Capital One','American Express','BlackRock','Charles Schwab','Fidelity Investments',
-    'McKinsey & Company','Boston Consulting Group','Bain & Company','Deloitte','PwC','EY','KPMG','Accenture','Booz Allen Hamilton','Cognizant',
-    'Eli Lilly','Pfizer','Merck','AbbVie','Bristol Myers Squibb','Amgen','Gilead Sciences','Moderna','CVS Health','Cigna',
-    'Boeing','Lockheed Martin','RTX','Northrop Grumman','General Electric','Caterpillar','3M','Honeywell','Ford','General Motors',
-    'Coca-Cola','PepsiCo','Nike','Starbucks','McDonald’s','Disney','Comcast','AT&T','Verizon','T-Mobile',
-    'FedEx','UPS','Delta Air Lines','United Airlines','American Airlines','Marriott','Hilton','Target','Lowe’s','Kroger'
+    ['Amazon',56],['Google',36],['Meta',399],['Microsoft',268],['Bytedance',4142],['LinkedIn',415],['Uber',948],['Bloomberg',334],['Apple',313],['Airbnb',942],
+    ['DoorDash',1829],['Snapchat',802],['Twitter',467],['Oracle',429],['AkunaCapital',677],['Citadel',692],['Pinterest',1012],['NVIDIA',518],['Stripe',2126],['Roblox',1873],
+    ['Capital One',2732],['Salesforce',499],['Wayfair',1093],['IBM',513],['Robinhood',2899],['Yelp',365],['Goldman Sachs',8755],['Databricks',1890],['JPMorgan Chase',1048],['Dropbox',638],
+    ['Two Sigma',1247],['Walmart Global Tech',1322],['eBay',481],['Lyft',1725],['Cisco',378],['OpenAI',9407],['Expedia',460],['MathWorks',475],['Indeed',749],['Coinbase',2869],
+    ['VMware',333],['Snowflake',2246],['Tesla',1193],['Yahoo',379],['Visa',1118],['Pure Storage',763],['Intuit',1005],['Instacart',3356],['PayPal',542],['Square',482],
+    ['Quora',983],['Hudson River Trading',8698],['Zillow',505],['TuSimple',2013],['Alibaba',1328],['Palantir',847],['Adobe',1016],['Wish',48],['Epic Systems',468],['Netflix',1418],
+    ['IMC',2057],['Anthropic',9878],['Coursera',988],['McKinsey',504],['SIG',905],['WePay',1228],['Optiver',8331],['Huawei',797],['Qualcomm',331],['DRW',2833],
+    ['SAP',478],['Intel',358],['Affirm',2173],['Rippling',7716],['Waymo',3330],['Morgan Stanley',3491],['BlackRock',1027],['TripAdvisor',484],['Flexport',1827],['Tencent',53],
+    ['LiveRamp',464],['Twilio',1205],['Atlassian',2480],['C3.ai',7990],['Compass',2324],['Confluent',4152],['Nuro',2709],['Coupang',2160],['WeRide',4382],['Zoox',2978],
+    ['Cruise',2674],['Houzz',978],['Reddit',3119],['Jane Street',2069],['Didi',2665],['Point72 Asset Management',1529],['Zenefits',1139],['Rubrik',1703],['Samsara',2992],['Qualtrics',1152]
   ];
   const search = document.querySelector('[data-company-search]');
   const count = document.querySelector('[data-company-count]');
   const initials = (name) => name.replace(/&/g, ' ').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
   function render(query = '') {
     const normalized = query.trim().toLowerCase();
-    const visible = companies.filter((name) => name.toLowerCase().includes(normalized));
-    grid.replaceChildren(...visible.map((name) => {
+    const visible = companies.filter(([name]) => name.toLowerCase().includes(normalized));
+    grid.replaceChildren(...visible.map(([name, tagId]) => {
       const link = document.createElement('a');
       link.className = 'company-tile';
-      link.href = `https://www.google.com/search?q=${encodeURIComponent(name + ' interview questions careers jobs')}`;
+      link.href = `https://www.1point3acres.com/bbs/tag-${tagId}-1.html`;
       link.target = '_blank';
       link.rel = 'noopener';
       link.setAttribute('aria-label', `${name}: interview and career resources (opens in a new tab)`);
