@@ -357,6 +357,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent-ink); }
   margin: 0 0 var(--s-6);
   color: var(--text);
 }
+.career-feature { margin-bottom: var(--s-8); }
+.career-feature .card { max-width: 56ch; }
 .post-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
