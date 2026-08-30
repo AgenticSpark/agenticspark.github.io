@@ -86,8 +86,8 @@
   generate();
 })();
 
-// Career gallery data is rendered client-side to keep the page compact and
-// make filtering immediate. Links open focused interview-preparation searches.
+// Career gallery data is rendered client-side to keep filtering and the
+// in-page company resources panel immediate.
 (function () {
   const grid = document.querySelector('[data-company-grid]');
   if (!grid) return;
@@ -115,19 +115,101 @@
     ['Interactive Brokers',8704,'interactivebrokers.com'],['NewsBreak',7741,'newsbreak.com'],['Pocket Gems',851,'pocketgems.com'],['DocuSign',1380,'docusign.com'],['D. E. Shaw',8325,'deshaw.com'],['Millennium Management',9708,'mlp.com'],['Deloitte',2838,'deloitte.com'],['Brex',4849,'brex.com'],['Autodesk',503,'autodesk.com'],['WeWork',2467,'wework.com'],
     ['Veeva',9288,'veeva.com'],['Factual',1070,'factual.com'],['Plaid',8593,'plaid.com'],['Pinduoduo',3995,'pddholdings.com'],['Cloudera',705,'cloudera.com'],['Fidelity',7964,'fidelity.com'],['Axon',2529,'axon.com'],['Roku',3358,'roku.com'],['Ericsson',947,'ericsson.com'],['Figma',8373,'figma.com']
   ];
+  // Verified 2026-08-30: each mapped slug resolves to a real Prachub company.
+  const prachubSlugs = new Map([
+    ['Uber','uber'],['LinkedIn','linkedin'],['Bytedance','bytedance'],['Airbnb','airbnb'],['Bloomberg','bloomberg'],['Microsoft','microsoft'],['DoorDash','doordash'],['Google','google'],['Meta','meta'],['Pinterest','pinterest'],
+    ['Snapchat','snapchat'],['Stripe','stripe'],['Salesforce','salesforce'],['Capital One','capital-one'],['Amazon','amazon'],['NVIDIA','nvidia'],['Databricks','databricks'],['Roblox','roblox'],['Robinhood','robinhood'],['IBM','ibm'],
+    ['Wayfair','wayfair'],['Dropbox','dropbox'],['Two Sigma','two-sigma'],['eBay','ebay'],['Snowflake','snowflake'],['Lyft','lyft'],['MathWorks','mathworks'],['Expedia','expedia'],['OpenAI','openai'],['Coinbase','coinbase'],
+    ['Tesla','tesla'],['Instacart','instacart'],['PayPal','paypal'],['Palantir','palantir'],['Adobe','adobe'],['IMC','imc'],['Netflix','netflix'],['Optiver','optiver'],['Anthropic','anthropic'],['SIG','sig'],
+    ['Qualcomm','qualcomm'],['Affirm','affirm'],['Rippling','rippling'],['Flexport','flexport'],['BlackRock','blackrock'],['Waymo','waymo'],['C3.ai','c3-ai'],['Atlassian','atlassian'],['Nuro','nuro'],['Confluent','confluent'],
+    ['Reddit','reddit'],['Jane Street','jane-street'],['Zoox','zoox'],['Coupang','coupang'],['Circle','circle'],['Shopify','shopify'],['Palo Alto Networks','palo-alto-networks'],['Datadog','datadog'],['IXL Learning','ixl-learning'],['HubSpot','hubspot'],
+    ['Citi','citi'],['Wells Fargo','wells-fargo'],['Asana','asana'],['xAI','xai'],['Scale AI','scale-ai'],['Ramp','ramp'],['Duolingo','duolingo'],['Applied Intuition','applied-intuition'],['Okta','okta'],['Nordstrom','nordstrom'],
+    ['Disney','disney'],['MongoDB','mongodb'],['Chime','chime'],['Nextdoor','nextdoor'],['Oracle','oracle'],['Verkada','verkada'],['SoFi','sofi'],['Apple','apple'],['Box','box'],['Citadel','citadel'],
+    ['DocuSign','docusign'],['Brex','brex'],['Plaid','plaid'],['Fidelity','fidelity'],['Roku','roku'],['Axon','axon'],['Figma','figma']
+  ]);
+  const companyLogoOverrides = new Map([
+    ['Alibaba','https://static.alibabagroup.com/static/favicon.ico'],
+    ['Goldman Sachs','https://cdn.gs.com/images/goldman-sachs/v2/gs-favicon.svg']
+  ]);
+  // DarkInterview returns a branded "Not Found" page with HTTP 200, so only
+  // collections whose page content was verified are enabled here.
+  const darkInterviewSlugs = new Map([
+    ['Uber','uber'],['Apple','apple'],['Pinterest','pinterest'],['Stripe','stripe'],['Roblox','roblox'],['Robinhood','robinhood'],['Databricks','databricks'],['OpenAI','openai'],['Coinbase','coinbase'],['Snowflake','snowflake'],['Palantir','palantir'],['Netflix','netflix'],['Anthropic','anthropic'],['Rippling','rippling'],['Reddit','reddit'],['xAI','xai'],['Ramp','ramp']
+  ]);
+  // Hack2Hire currently serves plausible HTTP-200 pages for arbitrary slugs.
+  // Keep this deliberately conservative: Databricks is the supplied, verified
+  // collection; other companies remain unavailable until individually checked.
+  const hack2HireSlugs = new Map([['Databricks','databricks']]);
   const search = document.querySelector('[data-company-search]');
   const count = document.querySelector('[data-company-count]');
+  const panel = document.querySelector('[data-company-panel]');
+  const panelTitle = document.querySelector('[data-company-title]');
+  const resources = document.querySelector('[data-company-resources]');
+  const closeButton = document.querySelector('[data-company-close]');
+  const backdrop = document.querySelector('[data-company-backdrop]');
+  let selectedName = '';
+  let lastTrigger = null;
   const initials = (name) => name.replace(/&/g, ' ').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+  const resource = (label, href) => {
+    const item = document.createElement('li');
+    if (href) {
+      const link = document.createElement('a');
+      link.href = href;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.textContent = label;
+      link.setAttribute('aria-label', `${label} (opens in a new tab)`);
+      item.append(link);
+    } else {
+      const unavailable = document.createElement('span');
+      unavailable.className = 'resource-unavailable';
+      unavailable.setAttribute('aria-disabled', 'true');
+      unavailable.innerHTML = `<span>${label}</span><small>Unavailable</small>`;
+      item.append(unavailable);
+    }
+    return item;
+  };
+  function closePanel(restoreFocus = true) {
+    if (!selectedName) return;
+    selectedName = '';
+    panel.hidden = true;
+    backdrop.hidden = true;
+    document.body.classList.remove('company-panel-open');
+    document.querySelectorAll('.company-tile.is-selected').forEach((tile) => tile.classList.remove('is-selected'));
+    document.querySelectorAll('.company-select[aria-pressed="true"]').forEach((button) => button.setAttribute('aria-pressed', 'false'));
+    if (restoreFocus && lastTrigger?.isConnected) lastTrigger.focus();
+  }
+  function selectCompany(name, tagId, trigger) {
+    selectedName = name;
+    lastTrigger = trigger;
+    const prachub = prachubSlugs.get(name);
+    const dark = darkInterviewSlugs.get(name);
+    const hack = hack2HireSlugs.get(name);
+    const base = prachub ? `https://prachub.com/companies/${prachub}/positions/software-engineer/categories/` : '';
+    panelTitle.textContent = name;
+    resources.replaceChildren(
+      resource('1Point3Acres BBS', `https://www.1point3acres.com/bbs/tag-${tagId}-1.html`),
+      resource('Prachub System Design', base && `${base}system-design?sort=hot`),
+      resource('Prachub Behavioral Questions', base && `${base}behavioral-and-leadership?sort=hot`),
+      resource('Prachub LeetCode', base && `${base}coding-and-algorithms?sort=hot`),
+      resource('DarkInterview collection', dark && `https://darkinterview.com/collections/${dark}`),
+      resource('Hack2Hire question bank', hack && `https://www.hack2hire.com/question-bank/companies/${hack}/coding-questions`)
+    );
+    panel.hidden = false;
+    backdrop.hidden = false;
+    document.body.classList.add('company-panel-open');
+    document.querySelectorAll('.company-tile').forEach((tile) => tile.classList.toggle('is-selected', tile.dataset.company === name));
+    document.querySelectorAll('.company-select').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.company === name)));
+    panel.focus({ preventScroll: true });
+  }
   function render(query = '') {
     const normalized = query.trim().toLowerCase();
     const visible = companies.filter(([name]) => name.toLowerCase().includes(normalized));
     grid.replaceChildren(...visible.map(([name, tagId, domain]) => {
-      const link = document.createElement('a');
-      link.className = 'company-tile';
-      link.href = `https://www.1point3acres.com/bbs/tag-${tagId}-1.html`;
-      link.target = '_blank';
-      link.rel = 'noopener';
-      link.setAttribute('aria-label', `${name}: interview and career resources (opens in a new tab)`);
+      const tile = document.createElement('article');
+      tile.className = 'company-tile';
+      tile.dataset.company = name;
+      if (name === selectedName) tile.classList.add('is-selected');
       const mark = document.createElement('span');
       mark.className = 'company-mark';
       mark.setAttribute('aria-hidden', 'true');
@@ -147,16 +229,37 @@
           logo.remove();
         }
       });
-      logo.src = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
+      logo.src = companyLogoOverrides.get(name) || `https://icons.duckduckgo.com/ip3/${domain}.ico`;
       mark.append(logo);
-      const label = document.createElement('span');
-      label.className = 'company-name';
+      const logoButton = document.createElement('button');
+      logoButton.type = 'button';
+      logoButton.className = 'company-select company-logo-button';
+      logoButton.dataset.company = name;
+      logoButton.setAttribute('aria-controls', 'company-resources-panel');
+      logoButton.setAttribute('aria-pressed', String(name === selectedName));
+      logoButton.setAttribute('aria-label', `Show ${name} interview resources`);
+      logoButton.append(mark);
+      logoButton.addEventListener('click', () => selectCompany(name, tagId, logoButton));
+      tile.append(logoButton);
+      const label = document.createElement('button');
+      label.type = 'button';
+      label.className = 'company-select company-name';
+      label.dataset.company = name;
       label.textContent = name;
-      link.append(mark, label);
-      return link;
+      label.setAttribute('aria-controls', 'company-resources-panel');
+      label.setAttribute('aria-pressed', String(name === selectedName));
+      label.setAttribute('aria-label', `Show ${name} interview resources`);
+      label.addEventListener('click', () => selectCompany(name, tagId, label));
+      tile.append(label);
+      return tile;
     }));
     count.textContent = `${visible.length} ${visible.length === 1 ? 'company' : 'companies'}`;
   }
   search.addEventListener('input', () => render(search.value));
+  closeButton.addEventListener('click', () => closePanel());
+  backdrop.addEventListener('click', () => closePanel());
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && selectedName) closePanel();
+  });
   render();
 })();

@@ -264,6 +264,7 @@ Shadows are subtle — they exist to lift cards off the background, not announce
 ### 8.17 Company gallery
 - Desktop uses a compact fixed 10-column grid, stepping down to 6, 3, and 2 columns.
 - Company favicons are fetched through DuckDuckGo's privacy-oriented favicon cache; initials remain visible if an icon fails.
+- Both the company name and logo select the same in-page resources drawer; verified external links are enabled there and unknown destinations are visibly unavailable.
 - Tiles reuse elevated surfaces, borders, shadows, and terracotta focus/hover treatments.
 
 ---
@@ -309,6 +310,8 @@ Shadows are subtle — they exist to lift cards off the background, not announce
 /assets/img/og-card.png          Branded 1200×630 social card (og:image on home + about)
 /assets/ethan-jiang-resume.pdf   Downloadable résumé (linked from about.html)
 ```
+
+The careers explorer keeps company selection in-page: both the logo and name open an accessible resources drawer, where verified external interview links are listed and unavailable destinations are visibly disabled.
 
 ---
 
