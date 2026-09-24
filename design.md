@@ -286,6 +286,7 @@ Shadows are subtle — they exist to lift cards off the background, not announce
 /blog.html          Writing index — all posts, tagged paper / repo / practice
 /careers/top-200-companies.html  Top 200 Companies Explorer
 /password.html      Local cryptographically secure password generator
+/learning.html      AI, LLM & distributed systems learning roadmap
 /posts/comfyui.html ComfyUI LoRA style matrix (embeds /assets/gallery/*)   · practice
 /posts/elf.html              ELF · Embedded Language Flows                  · paper
 /posts/drifting-models.html  Drifting Models                               · paper
