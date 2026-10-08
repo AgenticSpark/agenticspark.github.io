@@ -284,7 +284,11 @@ Shadows are subtle — they exist to lift cards off the background, not announce
 /                   index.html        Home: text intro + recent writing
 /about.html         About / résumé / contact
 /blog.html          Writing index — all posts, tagged paper / repo / practice
+/careers/                    Careers resource index
 /careers/top-200-companies.html  Top 200 Companies Explorer
+/careers/blind75.html        Blind 75 study list
+/careers/system-design-20.html  System Design 20 question bank
+/careers/behavioral-30.html     Behavioral 30 question bank
 /password.html      Local cryptographically secure password generator
 /learning.html      AI, LLM & distributed systems learning roadmap
 /posts/comfyui.html ComfyUI LoRA style matrix (embeds /assets/gallery/*)   · practice
@@ -312,7 +316,7 @@ Shadows are subtle — they exist to lift cards off the background, not announce
 /assets/ethan-jiang-resume.pdf   Downloadable résumé (linked from about.html)
 ```
 
-The careers explorer keeps company selection in-page: both the logo and name open an accessible resources drawer, where verified external interview links are listed and unavailable destinations are visibly disabled.
+The Careers index links to the Top 200 company explorer, Blind 75, and the learning roadmap. The company explorer keeps company selection in-page: both the logo and name open an accessible resources drawer, where verified external interview links are listed and unavailable destinations are visibly disabled. Blind 75 uses expandable topic groups and keeps the full problem list on-site.
 
 ---
 

@@ -8,8 +8,13 @@ Static HTML, no build step, deployed via GitHub Pages at <https://agenticspark.g
 /                    home — intro + recent writing
 /about.html          about / résumé / contact (résumé PDF download)
 /blog.html           writing index — all posts (paper / repo / practice)
+/careers/            careers resource index
 /careers/top-200-companies.html  Top 200 Companies Explorer
-/password.html       cryptographically secure local password generator
+/careers/blind75.html             Blind 75 study list
+/careers/system-design-20.html    curated system design questions
+/careers/behavioral-30.html       curated behavioral interview questions
+/learning.html       AI and systems learning roadmap (listed under Careers)
+/password.html       tools index + cryptographically secure password generator
 /posts/*.html        long-form posts (paper explainers, repo reviews, ComfyUI write-up)
 /404.html            not-found page
 /design.md           design system SSOT (read before extending the site)

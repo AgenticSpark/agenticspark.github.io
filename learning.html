@@ -1,17 +1,17 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AI &amp; Systems 学习路线 — Ethan</title>
-  <meta name="description" content="面向资深软件工程师的 AI、LLM 与分布式系统系统学习路线：10 门公开课程、学习顺序、视频、代码与官方资料。" />
+  <title>AI &amp; Systems Learning Roadmap — Ethan</title>
+  <meta name="description" content="A systematic AI, LLM, and distributed systems learning roadmap for experienced software engineers, with ten open courses, videos, code, and official resources." />
   <link rel="canonical" href="https://agenticspark.github.io/learning.html" />
   <meta name="theme-color" content="#faf9f5" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#141413" media="(prefers-color-scheme: dark)" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Ethan" />
-  <meta property="og:title" content="AI &amp; Systems 学习路线 — Ethan" />
-  <meta property="og:description" content="从数学与机器学习基础，到 LLM 训练、数据库和分布式系统的系统学习路线。" />
+  <meta property="og:title" content="AI &amp; Systems Learning Roadmap — Ethan" />
+  <meta property="og:description" content="A structured path from math and machine learning fundamentals to LLM training, databases, and distributed systems." />
   <meta property="og:url" content="https://agenticspark.github.io/learning.html" />
   <meta property="og:image" content="https://agenticspark.github.io/assets/img/og-card.png" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -22,14 +22,12 @@
   <link rel="stylesheet" href="./assets/css/site.css" />
 </head>
 <body>
-  <a class="skip-link" href="#main">跳到正文</a>
+  <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="inner">
-      <a href="./" class="brand">Ethan</a>
-      <nav class="nav" aria-label="主导航">
+      <nav class="nav" aria-label="Primary">
         <a href="./blog.html">Blog</a>
-        <a href="./learning.html">Learning</a>
-        <a href="./careers/top-200-companies.html">Careers</a>
+        <a class="is-active" aria-current="page" href="./careers/index.html">Careers</a>
         <a href="./password.html">Tools</a>
         <a href="./about.html">About</a>
       </nav>
@@ -39,135 +37,135 @@
   <main id="main" class="reading learning-page">
     <header class="page-heading">
       <span class="eyebrow">AI · LLM · DISTRIBUTED SYSTEMS</span>
-      <h1>系统学习路线</h1>
-      <p>为有软件工程与大数据背景的学习者设计：先建立数学和机器学习底座，再完成 NLP 与语言模型主线，最后深入数据系统、分布式系统与强化学习。</p>
+      <h1>A systematic learning roadmap</h1>
+      <p>Designed for engineers with software and big-data experience: build the mathematical and machine-learning foundation first, complete the NLP and language-model sequence, then go deeper into data systems, distributed systems, and reinforcement learning.</p>
     </header>
 
     <article class="prose">
       <section class="learning-principles" aria-labelledby="how-to-use">
-        <h2 id="how-to-use">如何使用这份路线</h2>
+        <h2 id="how-to-use">How to use this roadmap</h2>
         <div class="callout-grid">
           <div class="callout accent">
-            <h3>主线优先</h3>
-            <p>CS229 → CS224N → CS336 是核心主线。数学课程按需穿插，系统课程可与 AI 主线并行。</p>
+            <h3>Prioritize the core sequence</h3>
+            <p>CS229 → CS224N → CS336 is the central path. Add math where needed and study systems alongside the AI sequence.</p>
           </div>
           <div class="callout">
-            <h3>以实现为验收</h3>
-            <p>每门课至少完成一个代表性作业或项目；不要把“看完视频”当作完成。</p>
+            <h3>Learn by building</h3>
+            <p>Complete at least one representative assignment or project for every course. Watching the lectures alone does not count as completion.</p>
           </div>
           <div class="callout">
-            <h3>按版本成套学习</h3>
-            <p>视频、讲义和作业尽量使用同一学期版本。公开资料完整比追最新学期更重要。</p>
+            <h3>Keep each course version aligned</h3>
+            <p>Use videos, notes, and assignments from the same term whenever possible. A complete public edition matters more than the newest one.</p>
           </div>
         </div>
       </section>
 
-      <h2>推荐学习顺序</h2>
-      <p class="learning-note">建议总周期约 12–18 个月（每周 8–12 小时）。已有基础的章节可通过作业自测后跳过。GitHub 一栏标注“社区”的并非课程官方仓库。</p>
+      <h2>Recommended learning order</h2>
+      <p class="learning-note">Plan for roughly 12–18 months at 8–12 hours per week. Use assignments to test out of topics you already know. GitHub links marked “community” are not official course repositories.</p>
 
       <div class="table-wrap learning-table-wrap">
         <table class="learning-table">
           <thead>
             <tr>
-              <th scope="col">顺序</th>
-              <th scope="col">课程</th>
-              <th scope="col">重点与完成标准</th>
-              <th scope="col">建议周期</th>
-              <th scope="col">难度</th>
-              <th scope="col">课程资源</th>
+              <th scope="col">Order</th>
+              <th scope="col">Course</th>
+              <th scope="col">Focus and completion target</th>
+              <th scope="col">Time</th>
+              <th scope="col">Difficulty</th>
+              <th scope="col">Resources</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><span class="course-order">01</span><span class="course-phase">全景</span></td>
+              <td><span class="course-order">01</span><span class="course-phase">OVERVIEW</span></td>
               <td><strong>Harvard CS50 AI</strong><small>Introduction to AI with Python</small></td>
-              <td>搜索、知识表示、概率、优化、ML 与神经网络。快速完成 2–3 个项目，建立 AI 问题地图。</td>
-              <td>2–3 周</td>
-              <td><span class="chip">中</span></td>
-              <td><div class="course-links"><a href="https://cs50.harvard.edu/ai/" target="_blank" rel="noopener">官方</a><a href="https://www.youtube.com/playlist?list=PLhQjrBD2T381PopUTYtMSstgk-hsTGkVm" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/cs50/ai" target="_blank" rel="noopener">GitHub</a></div></td>
+              <td>Search, knowledge representation, probability, optimization, ML, and neural networks. Complete two or three projects to build a map of the AI landscape.</td>
+              <td>2–3 weeks</td>
+              <td><span class="chip">Medium</span></td>
+              <td><div class="course-links"><a href="https://cs50.harvard.edu/ai/" target="_blank" rel="noopener">Official</a><a href="https://www.youtube.com/playlist?list=PLhQjrBD2T381PopUTYtMSstgk-hsTGkVm" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/cs50/ai" target="_blank" rel="noopener">GitHub</a></div></td>
             </tr>
             <tr>
-              <td><span class="course-order">02</span><span class="course-phase">数学</span></td>
+              <td><span class="course-order">02</span><span class="course-phase">MATH</span></td>
               <td><strong>MIT 18.06</strong><small>Linear Algebra</small></td>
-              <td>向量空间、投影、特征值、SVD。能从几何与矩阵两种视角解释最小二乘和 PCA。</td>
-              <td>6–8 周</td>
-              <td><span class="chip">中</span></td>
-              <td><div class="course-links"><a href="https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/" target="_blank" rel="noopener">官方</a><a href="https://www.youtube.com/playlist?list=PL49CF3715CB9EF31D" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/mitmath/1806" target="_blank" rel="noopener">GitHub</a></div></td>
+              <td>Vector spaces, projections, eigenvalues, and SVD. Explain least squares and PCA from both geometric and matrix perspectives.</td>
+              <td>6–8 weeks</td>
+              <td><span class="chip">Medium</span></td>
+              <td><div class="course-links"><a href="https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/" target="_blank" rel="noopener">Official</a><a href="https://www.youtube.com/playlist?list=PL49CF3715CB9EF31D" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/mitmath/1806" target="_blank" rel="noopener">GitHub</a></div></td>
             </tr>
             <tr>
-              <td><span class="course-order">03</span><span class="course-phase">数学</span></td>
+              <td><span class="course-order">03</span><span class="course-phase">MATH</span></td>
               <td><strong>Harvard STAT 110</strong><small>Probability</small></td>
-              <td>条件概率、随机变量、期望和常用分布。完成 Strategic Practice，能用概率模型表达不确定性。</td>
-              <td>6–8 周</td>
-              <td><span class="chip">中高</span></td>
-              <td><div class="course-links"><a href="https://stat110.hsites.harvard.edu/" target="_blank" rel="noopener">官方</a><a href="https://www.youtube.com/playlist?list=PL2SOU6wwxB0uwwH80KTQ6ht66KWxbzTIo" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/covuworie/harvard-stats-110" target="_blank" rel="noopener">GitHub · 社区</a></div></td>
+              <td>Conditional probability, random variables, expectation, and common distributions. Finish the Strategic Practice sets and model uncertainty probabilistically.</td>
+              <td>6–8 weeks</td>
+              <td><span class="chip">Medium–high</span></td>
+              <td><div class="course-links"><a href="https://stat110.hsites.harvard.edu/" target="_blank" rel="noopener">Official</a><a href="https://www.youtube.com/playlist?list=PL2SOU6wwxB0uwwH80KTQ6ht66KWxbzTIo" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/covuworie/harvard-stats-110" target="_blank" rel="noopener">GitHub · community</a></div></td>
             </tr>
             <tr>
-              <td><span class="course-order">04</span><span class="course-phase">算法</span></td>
+              <td><span class="course-order">04</span><span class="course-phase">ALGORITHMS</span></td>
               <td><strong>MIT 6.006</strong><small>Introduction to Algorithms</small></td>
-              <td>数据结构、算法设计与复杂度。完成代表性题目，并能清楚说明正确性和时间/空间复杂度。</td>
-              <td>6–8 周</td>
-              <td><span class="chip">中高</span></td>
-              <td><div class="course-links"><a href="https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-fall-2011/" target="_blank" rel="noopener">官方</a><a href="https://www.youtube.com/playlist?list=PLUl4u3cNGP63EdVPNLG3ToM6LaEUuStEY" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/mitocw/6.006-fall-2011" target="_blank" rel="noopener">GitHub</a></div></td>
+              <td>Data structures, algorithm design, and complexity. Solve representative problems and clearly explain correctness and time/space complexity.</td>
+              <td>6–8 weeks</td>
+              <td><span class="chip">Medium–high</span></td>
+              <td><div class="course-links"><a href="https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-fall-2011/" target="_blank" rel="noopener">Official</a><a href="https://www.youtube.com/playlist?list=PLUl4u3cNGP63EdVPNLG3ToM6LaEUuStEY" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/mitocw/6.006-fall-2011" target="_blank" rel="noopener">GitHub</a></div></td>
             </tr>
             <tr>
               <td><span class="course-order">05</span><span class="course-phase">ML</span></td>
               <td><strong>Stanford CS229</strong><small>Machine Learning</small></td>
-              <td>监督/无监督学习、概率模型、泛化与学习理论。手推核心目标函数，并从零实现 2–3 个算法。</td>
-              <td>8–10 周</td>
-              <td><span class="chip">高</span></td>
-              <td><div class="course-links"><a href="https://cs229.stanford.edu/" target="_blank" rel="noopener">官方</a><a href="https://www.youtube.com/playlist?list=PLoROMvodv4rMiGQp3WXShtMGgzqpfVfbU" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/maxim5/cs229-2018-autumn" target="_blank" rel="noopener">GitHub · 社区</a></div></td>
+              <td>Supervised and unsupervised learning, probabilistic models, generalization, and learning theory. Derive the core objectives and implement two or three algorithms from scratch.</td>
+              <td>8–10 weeks</td>
+              <td><span class="chip">High</span></td>
+              <td><div class="course-links"><a href="https://cs229.stanford.edu/" target="_blank" rel="noopener">Official</a><a href="https://www.youtube.com/playlist?list=PLoROMvodv4rMiGQp3WXShtMGgzqpfVfbU" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/maxim5/cs229-2018-autumn" target="_blank" rel="noopener">GitHub · community</a></div></td>
             </tr>
             <tr>
               <td><span class="course-order">06</span><span class="course-phase">NLP</span></td>
               <td><strong>Stanford CS224N</strong><small>NLP with Deep Learning</small></td>
-              <td>词向量、注意力、Transformer 与语言模型。完成 Transformer 作业，读懂一次完整训练与评估流程。</td>
-              <td>8–10 周</td>
-              <td><span class="chip">高</span></td>
-              <td><div class="course-links"><a href="https://web.stanford.edu/class/cs224n/" target="_blank" rel="noopener">官方</a><a href="https://www.youtube.com/playlist?list=PLoROMvodv4rOaMFbaqxPDoLWjDaRAdP9D" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/stanfordnlp/cs224n-utils" target="_blank" rel="noopener">GitHub</a></div></td>
+              <td>Word vectors, attention, Transformers, and language models. Complete the Transformer assignment and understand an end-to-end training and evaluation pipeline.</td>
+              <td>8–10 weeks</td>
+              <td><span class="chip">High</span></td>
+              <td><div class="course-links"><a href="https://web.stanford.edu/class/cs224n/" target="_blank" rel="noopener">Official</a><a href="https://www.youtube.com/playlist?list=PLoROMvodv4rOaMFbaqxPDoLWjDaRAdP9D" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/stanfordnlp/cs224n-utils" target="_blank" rel="noopener">GitHub</a></div></td>
             </tr>
             <tr>
               <td><span class="course-order">07</span><span class="course-phase">LLM</span></td>
               <td><strong>Stanford CS336</strong><small>Language Modeling from Scratch</small></td>
-              <td>分词、Transformer、训练、数据、并行与评估。实现一个小型 LM，并完成至少一个系统或数据作业。</td>
-              <td>10–12 周</td>
-              <td><span class="chip">很高</span></td>
-              <td><div class="course-links"><a href="https://cs336.stanford.edu/spring2025/" target="_blank" rel="noopener">官方</a><a href="https://www.youtube.com/playlist?list=PLoROMvodv4rOY23Y0BoGoBGgQ1zmU_MT_" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/stanford-cs336" target="_blank" rel="noopener">GitHub</a></div></td>
+              <td>Tokenization, Transformers, training, data, parallelism, and evaluation. Build a small LM and finish at least one systems or data assignment.</td>
+              <td>10–12 weeks</td>
+              <td><span class="chip">Very high</span></td>
+              <td><div class="course-links"><a href="https://cs336.stanford.edu/spring2025/" target="_blank" rel="noopener">Official</a><a href="https://www.youtube.com/playlist?list=PLoROMvodv4rOY23Y0BoGoBGgQ1zmU_MT_" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/stanford-cs336" target="_blank" rel="noopener">GitHub</a></div></td>
             </tr>
             <tr>
-              <td><span class="course-order">08</span><span class="course-phase">数据系统</span></td>
+              <td><span class="course-order">08</span><span class="course-phase">DATA SYSTEMS</span></td>
               <td><strong>CMU 15-445</strong><small>Database Systems</small></td>
-              <td>存储、索引、查询执行、事务与恢复。在 BusTub 中完成 buffer pool、索引或执行器模块。</td>
-              <td>10–12 周</td>
-              <td><span class="chip">高</span></td>
-              <td><div class="course-links"><a href="https://15445.courses.cs.cmu.edu/fall2024/" target="_blank" rel="noopener">官方</a><a href="https://www.youtube.com/playlist?list=PLSE8ODhjZXjZaHA6QcxDfJ0SIWBzQFKEG" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/cmu-db/bustub" target="_blank" rel="noopener">GitHub</a></div></td>
+              <td>Storage, indexes, query execution, transactions, and recovery. Implement the buffer pool, an index, or an execution component in BusTub.</td>
+              <td>10–12 weeks</td>
+              <td><span class="chip">High</span></td>
+              <td><div class="course-links"><a href="https://15445.courses.cs.cmu.edu/fall2024/" target="_blank" rel="noopener">Official</a><a href="https://www.youtube.com/playlist?list=PLSE8ODhjZXjZaHA6QcxDfJ0SIWBzQFKEG" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/cmu-db/bustub" target="_blank" rel="noopener">GitHub</a></div></td>
             </tr>
             <tr>
-              <td><span class="course-order">09</span><span class="course-phase">分布式</span></td>
+              <td><span class="course-order">09</span><span class="course-phase">DISTRIBUTED</span></td>
               <td><strong>MIT 6.5840</strong><small>Distributed Systems</small></td>
-              <td>一致性、复制、容错与分布式存储。认真完成 Raft、KV 服务和分片实验；这是系统主线的核心。</td>
-              <td>12–14 周</td>
-              <td><span class="chip">很高</span></td>
-              <td><div class="course-links"><a href="https://pdos.csail.mit.edu/6.824/" target="_blank" rel="noopener">官方</a><a href="https://www.youtube.com/playlist?list=PLrw6a1wE39_tb2fErI4-WkMbsvGQk9_UB" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/mit-pdos/6.824-golabs-2020" target="_blank" rel="noopener">GitHub</a></div></td>
+              <td>Consistency, replication, fault tolerance, and distributed storage. Complete the Raft, key-value service, and sharding labs—the core of the systems track.</td>
+              <td>12–14 weeks</td>
+              <td><span class="chip">Very high</span></td>
+              <td><div class="course-links"><a href="https://pdos.csail.mit.edu/6.824/" target="_blank" rel="noopener">Official</a><a href="https://www.youtube.com/playlist?list=PLrw6a1wE39_tb2fErI4-WkMbsvGQk9_UB" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/mit-pdos/6.824-golabs-2020" target="_blank" rel="noopener">GitHub</a></div></td>
             </tr>
             <tr>
-              <td><span class="course-order">10</span><span class="course-phase">进阶</span></td>
+              <td><span class="course-order">10</span><span class="course-phase">ADVANCED</span></td>
               <td><strong>UC Berkeley CS285</strong><small>Deep Reinforcement Learning</small></td>
-              <td>策略优化、Actor-Critic、模仿与模型化 RL。完成 policy gradient 与 actor-critic 作业，连接到 LLM 对齐。</td>
-              <td>8–10 周</td>
-              <td><span class="chip">很高</span></td>
-              <td><div class="course-links"><a href="https://rail.eecs.berkeley.edu/deeprlcourse/" target="_blank" rel="noopener">官方</a><a href="https://www.youtube.com/playlist?list=PL_iWQOsE6TfURIIhCrlt-wj9ByIVpbfGc" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/berkeleydeeprlcourse/homework_fall2023" target="_blank" rel="noopener">GitHub</a></div></td>
+              <td>Policy optimization, actor-critic methods, imitation learning, and model-based RL. Complete the policy-gradient and actor-critic assignments, then connect them to LLM alignment.</td>
+              <td>8–10 weeks</td>
+              <td><span class="chip">Very high</span></td>
+              <td><div class="course-links"><a href="https://rail.eecs.berkeley.edu/deeprlcourse/" target="_blank" rel="noopener">Official</a><a href="https://www.youtube.com/playlist?list=PL_iWQOsE6TfURIIhCrlt-wj9ByIVpbfGc" target="_blank" rel="noopener">YouTube</a><a href="https://github.com/berkeleydeeprlcourse/homework_fall2023" target="_blank" rel="noopener">GitHub</a></div></td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <section class="learning-tracks" aria-labelledby="tracks">
-        <h2 id="tracks">三条可执行路径</h2>
+        <h2 id="tracks">Three practical paths</h2>
         <div class="callout-grid">
-          <div class="callout"><h3>时间有限 · 3 门</h3><p><strong>CS224N → CS336 → MIT 6.5840</strong><br />补齐模型与训练能力，同时强化系统优势。</p></div>
-          <div class="callout"><h3>长期转向 AI Infra</h3><p><strong>CS229 → CS224N → CS336 → 15-445 → 6.5840</strong><br />形成模型、训练与系统的完整闭环。</p></div>
-          <div class="callout"><h3>近期准备面试</h3><p><strong>6.006 → 15-445 → 6.5840</strong><br />把重点放在算法表达、数据库内核与系统取舍。</p></div>
+          <div class="callout"><h3>Limited time · 3 courses</h3><p><strong>CS224N → CS336 → MIT 6.5840</strong><br />Build model and training skills while strengthening your systems advantage.</p></div>
+          <div class="callout"><h3>Long-term AI infrastructure</h3><p><strong>CS229 → CS224N → CS336 → 15-445 → 6.5840</strong><br />Connect models, training, and production systems into one complete foundation.</p></div>
+          <div class="callout"><h3>Interview preparation</h3><p><strong>6.006 → 15-445 → 6.5840</strong><br />Focus on algorithmic reasoning, database internals, and systems tradeoffs.</p></div>
         </div>
       </section>
     </article>

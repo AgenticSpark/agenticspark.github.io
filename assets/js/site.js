@@ -22,6 +22,136 @@
   });
 })();
 
+// Public interview question banks store completion locally. No answers or
+// personal content are collected or rendered.
+(function () {
+  const bank = document.querySelector('[data-question-bank]');
+  if (!bank) return;
+  const checks = [...bank.querySelectorAll('input[type="checkbox"]')];
+  const progress = document.querySelector('[data-bank-progress]');
+  const storageKey = `question-bank-${bank.dataset.questionBank}`;
+  let completed = new Set();
+  try { completed = new Set(JSON.parse(localStorage.getItem(storageKey) || '[]')); } catch (_) { /* ignore unavailable storage */ }
+  const update = () => {
+    const done = checks.filter((check) => check.checked).length;
+    progress.textContent = `${done}/${checks.length} complete`;
+  };
+  checks.forEach((check) => {
+    check.checked = completed.has(check.value);
+    check.addEventListener('change', () => {
+      if (check.checked) completed.add(check.value); else completed.delete(check.value);
+      try { localStorage.setItem(storageKey, JSON.stringify([...completed])); } catch (_) { /* ignore unavailable storage */ }
+      update();
+    });
+  });
+  update();
+})();
+
+// Blind 75 links and local progress tracking. The HTML keeps the complete
+// readable list; this enhancement adds direct LeetCode links and checkboxes.
+(function () {
+  const list = document.querySelector('.blind75-grid');
+  if (!list) return;
+  const slugs = [
+    'two-sum','contains-duplicate','top-k-frequent-elements','product-of-array-except-self','longest-consecutive-sequence','3sum','container-with-most-water','best-time-to-buy-and-sell-stock','combination-sum','insert-interval','merge-intervals','non-overlapping-intervals','meeting-rooms','meeting-rooms-ii','missing-number',
+    'valid-anagram','group-anagrams','encode-and-decode-strings','valid-palindrome','longest-substring-without-repeating-characters','longest-repeating-character-replacement','minimum-window-substring','longest-palindromic-substring','palindromic-substrings','valid-parentheses',
+    'rotate-image','spiral-matrix','set-matrix-zeroes','find-minimum-in-rotated-sorted-array','search-in-rotated-sorted-array','reverse-linked-list','merge-two-sorted-lists','linked-list-cycle','reorder-list','remove-nth-node-from-end-of-list','merge-k-sorted-lists',
+    'invert-binary-tree','maximum-depth-of-binary-tree','same-tree','subtree-of-another-tree','binary-tree-level-order-traversal','construct-binary-tree-from-preorder-and-inorder-traversal','binary-tree-maximum-path-sum','serialize-and-deserialize-binary-tree','lowest-common-ancestor-of-a-binary-search-tree','validate-binary-search-tree','kth-smallest-element-in-a-bst',
+    'implement-trie-prefix-tree','design-add-and-search-words-data-structure','word-search-ii','find-median-from-data-stream','word-search','number-of-islands','clone-graph','pacific-atlantic-water-flow','course-schedule','number-of-connected-components-in-an-undirected-graph','graph-valid-tree','alien-dictionary',
+    'climbing-stairs','house-robber','house-robber-ii','decode-ways','coin-change','maximum-product-subarray','word-break','longest-increasing-subsequence','unique-paths','jump-game','combination-sum-iv','maximum-subarray','number-of-1-bits','counting-bits','reverse-bits','sum-of-two-integers'
+  ];
+  const items = [...list.querySelectorAll('li')];
+  const panel = document.querySelector('[data-blind-panel]');
+  const backdrop = document.querySelector('[data-blind-backdrop]');
+  const closeButton = document.querySelector('[data-blind-close]');
+  const panelTitle = document.querySelector('[data-blind-panel-title]');
+  const panelCount = document.querySelector('[data-blind-panel-count]');
+  const storageKey = 'blind75-completed';
+  let selectedGroup = null;
+  let lastNode = null;
+  let completed = new Set();
+  try { completed = new Set(JSON.parse(localStorage.getItem(storageKey) || '[]')); } catch (_) { /* ignore unavailable storage */ }
+
+  function updateProgress() {
+    list.querySelectorAll('details').forEach((group) => {
+      const checks = [...group.querySelectorAll('.problem-check')];
+      const done = checks.filter((check) => check.checked).length;
+      group.querySelector('summary small').textContent = `${done}/${checks.length} complete`;
+      const node = document.querySelector(`.roadmap-node[href="#${group.id}"] small`);
+      if (node) node.textContent = `${done}/${checks.length} complete`;
+      if (group === selectedGroup && panelCount) panelCount.textContent = `${done}/${checks.length} complete`;
+    });
+    const totalDone = items.filter((item) => item.querySelector('.problem-check')?.checked).length;
+    const total = document.querySelector('[data-blind-total]');
+    if (total) total.textContent = `${totalDone}/${items.length} complete · 13 topics`;
+  }
+
+  function openPanel(group, node) {
+    selectedGroup = group;
+    lastNode = node;
+    group.open = true;
+    list.querySelectorAll('details').forEach((item) => item.classList.toggle('is-selected', item === group));
+    document.querySelectorAll('.roadmap-node').forEach((item) => item.setAttribute('aria-expanded', String(item === node)));
+    panelTitle.textContent = group.querySelector('summary span').textContent;
+    panel.hidden = false;
+    backdrop.hidden = false;
+    document.body.classList.add('blind75-panel-open');
+    updateProgress();
+    panel.focus({ preventScroll: true });
+  }
+
+  function closePanel() {
+    if (!selectedGroup) return;
+    panel.hidden = true;
+    backdrop.hidden = true;
+    document.body.classList.remove('blind75-panel-open');
+    list.querySelectorAll('details.is-selected').forEach((item) => item.classList.remove('is-selected'));
+    document.querySelectorAll('.roadmap-node').forEach((item) => item.setAttribute('aria-expanded', 'false'));
+    selectedGroup = null;
+    if (lastNode?.isConnected) lastNode.focus();
+  }
+
+  items.forEach((item, index) => {
+    const difficulty = item.querySelector('span');
+    const title = item.firstChild.textContent.trim();
+    const slug = slugs[index];
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.className = 'problem-check';
+    check.checked = completed.has(slug);
+    check.setAttribute('aria-label', `Mark ${title} complete`);
+    const link = document.createElement('a');
+    link.className = 'problem-link';
+    link.href = `https://leetcode.com/problems/${slug}/`;
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.textContent = title;
+    link.setAttribute('aria-label', `${title} on LeetCode (opens in a new tab)`);
+    difficulty.dataset.difficulty = difficulty.textContent;
+    item.replaceChildren(check, link, difficulty);
+    check.addEventListener('change', () => {
+      if (check.checked) completed.add(slug); else completed.delete(slug);
+      try { localStorage.setItem(storageKey, JSON.stringify([...completed])); } catch (_) { /* ignore unavailable storage */ }
+      updateProgress();
+    });
+  });
+  document.querySelectorAll('.roadmap-node').forEach((node) => {
+    node.setAttribute('aria-controls', 'blind75-panel');
+    node.setAttribute('aria-expanded', 'false');
+    node.addEventListener('click', (event) => {
+    event.preventDefault();
+    const group = document.querySelector(node.getAttribute('href'));
+    if (group) openPanel(group, node);
+    });
+  });
+  closeButton.addEventListener('click', closePanel);
+  backdrop.addEventListener('click', closePanel);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && selectedGroup) closePanel();
+  });
+  updateProgress();
+})();
+
 // Cryptographically secure password generator. Loaded on every page but only
 // activates when the generator form is present.
 (function () {
@@ -94,7 +224,7 @@
   // Top 200 company tags ordered by thread count in the 1Point3Acres company
   // directory, captured 2026-08-30. Each tile links to its corresponding tag.
   const companies = [
-    ['Amazon',56,'amazon.com'],['Google',36,'google.com'],['Meta',399,'meta.com'],['Microsoft',268,'microsoft.com'],['Bytedance',4142,'bytedance.com'],['LinkedIn',415,'linkedin.com'],['Uber',948,'uber.com'],['Bloomberg',334,'bloomberg.com'],['Apple',313,'apple.com'],['Airbnb',942,'airbnb.com'],
+    ['Google',36,'google.com'],['Amazon',56,'amazon.com'],['Meta',399,'meta.com'],['Microsoft',268,'microsoft.com'],['Bytedance',4142,'bytedance.com'],['LinkedIn',415,'linkedin.com'],['Uber',948,'uber.com'],['Bloomberg',334,'bloomberg.com'],['Apple',313,'apple.com'],['Airbnb',942,'airbnb.com'],
     ['DoorDash',1829,'doordash.com'],['Snapchat',802,'snapchat.com'],['Twitter',467,'x.com'],['Oracle',429,'oracle.com'],['AkunaCapital',677,'akunacapital.com'],['Citadel',692,'citadel.com'],['Pinterest',1012,'pinterest.com'],['NVIDIA',518,'nvidia.com'],['Stripe',2126,'stripe.com'],['Roblox',1873,'roblox.com'],
     ['Capital One',2732,'capitalone.com'],['Salesforce',499,'salesforce.com'],['Wayfair',1093,'wayfair.com'],['IBM',513,'ibm.com'],['Robinhood',2899,'robinhood.com'],['Yelp',365,'yelp.com'],['Goldman Sachs',8755,'goldmansachs.com'],['Databricks',1890,'databricks.com'],['JPMorgan Chase',1048,'jpmorganchase.com'],['Dropbox',638,'dropbox.com'],
     ['Two Sigma',1247,'twosigma.com'],['Walmart Global Tech',1322,'walmart.com'],['eBay',481,'ebay.com'],['Lyft',1725,'lyft.com'],['Cisco',378,'cisco.com'],['OpenAI',9407,'openai.com'],['Expedia',460,'expedia.com'],['MathWorks',475,'mathworks.com'],['Indeed',749,'indeed.com'],['Coinbase',2869,'coinbase.com'],
@@ -130,6 +260,9 @@
   const companyLogoOverrides = new Map([
     ['Alibaba','https://static.alibabagroup.com/static/favicon.ico'],
     ['Goldman Sachs','https://cdn.gs.com/images/goldman-sachs/v2/gs-favicon.svg']
+  ]);
+  const officialCareerPages = new Map([
+    ['Google','https://www.google.com/about/careers/applications/dashboard']
   ]);
   // DarkInterview returns a branded "Not Found" page with HTTP 200, so only
   // collections whose page content was verified are enabled here.
@@ -185,9 +318,11 @@
     const prachub = prachubSlugs.get(name);
     const dark = darkInterviewSlugs.get(name);
     const hack = hack2HireSlugs.get(name);
+    const officialCareers = officialCareerPages.get(name);
     const base = prachub ? `https://prachub.com/companies/${prachub}/positions/software-engineer/categories/` : '';
     panelTitle.textContent = name;
     resources.replaceChildren(
+      ...(officialCareers ? [resource(`${name} Careers · Official`, officialCareers)] : []),
       resource('1Point3Acres BBS', `https://www.1point3acres.com/bbs/tag-${tagId}-1.html`),
       resource('Prachub System Design', base && `${base}system-design?sort=hot`),
       resource('Prachub Behavioral Questions', base && `${base}behavioral-and-leadership?sort=hot`),
