@@ -278,7 +278,7 @@
   const companyTierSets = Object.fromEntries(Object.entries(companyTierNames).map(([tier, names]) => [tier, new Set(names)]));
   const finalCompanyRank = new Map(companies.map(([name], index) => [name, index]));
   const companyTiers = [
-    ['S','Frontier'],['A','Exceptional'],['B','Excellent'],['C','Strong'],['D','Other']
+    ['S','Frontier'],['A','Excellent'],['B','Strong'],['C','Common'],['D','Other']
   ];
   const tierForCompany = (name) => {
     if (companyTierSets.S.has(name)) return 'S';
