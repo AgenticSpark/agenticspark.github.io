@@ -245,6 +245,49 @@
     ['Interactive Brokers',8704,'interactivebrokers.com'],['NewsBreak',7741,'newsbreak.com'],['Pocket Gems',851,'pocketgems.com'],['DocuSign',1380,'docusign.com'],['D. E. Shaw',8325,'deshaw.com'],['Millennium Management',9708,'mlp.com'],['Deloitte',2838,'deloitte.com'],['Brex',4849,'brex.com'],['Autodesk',503,'autodesk.com'],['WeWork',2467,'wework.com'],
     ['Veeva',9288,'veeva.com'],['Factual',1070,'factual.com'],['Plaid',8593,'plaid.com'],['Pinduoduo',3995,'pddholdings.com'],['Cloudera',705,'cloudera.com'],['Fidelity',7964,'fidelity.com'],['Axon',2529,'axon.com'],['Roku',3358,'roku.com'],['Ericsson',947,'ericsson.com'],['Figma',8373,'figma.com']
   ];
+  // Editorial ranking for software engineers, refreshed 2026-10-08. The top
+  // cohort balances technical momentum, US SWE compensation, engineering
+  // culture, career signal, benefits, stability, and workload. Companies with
+  // less comparable public data retain their original community-activity order.
+  const preferredCompanyOrder = [
+    'OpenAI','Anthropic','Google','Meta','xAI','NVIDIA','Databricks','Stripe','Netflix','Jane Street',
+    'Hudson River Trading','Airbnb','Figma','Waymo','Palantir','Scale AI','Apple','Ramp','Rippling','LinkedIn',
+    'Pinterest','Uber','Lyft','Snowflake','Datadog','Two Sigma','Citadel','D. E. Shaw','IMC','Optiver',
+    'Jump Trading','Roblox','Reddit','Spotify','Coinbase','DoorDash','Instacart','Brex','Plaid','Robinhood',
+    'Square','Affirm','Confluent','MongoDB','Dropbox','Asana','Duolingo','Applied Intuition','Samsara','Verkada',
+    'Rubrik','Pure Storage','Arista Networks','The Trade Desk','Microsoft','Amazon','Bytedance','Salesforce','Adobe','ServiceNow',
+    'Atlassian','Shopify','Twitch','Twitter','Snapchat','Bloomberg','Cruise','Zoox','Nuro','Aurora',
+    'WeRide','Pony.ai','Tesla','AMD','Qualcomm','Palo Alto Networks','Okta','Fortinet','Intuit','Workday',
+    'HubSpot','Twilio','Zoom','Box','Veeva','DocuSign','Autodesk','Tableau','Splunk','VMware',
+    'Oracle','Cisco','Intel','SAP','IBM','Visa','American Express','Capital One','Goldman Sachs','BlackRock',
+    'JPMorgan Chase','Morgan Stanley','Fidelity','Roku','Axon','Electronic Arts','Disney','Hulu','Audible','Coursera'
+  ];
+  const originalCompanyOrder = new Map(companies.map(([name], index) => [name, index]));
+  const preferredRank = new Map(preferredCompanyOrder.map((name, index) => [name, index]));
+  companies.sort(([nameA], [nameB]) => {
+    const rankA = preferredRank.get(nameA);
+    const rankB = preferredRank.get(nameB);
+    if (rankA !== undefined || rankB !== undefined) return (rankA ?? Number.MAX_SAFE_INTEGER) - (rankB ?? Number.MAX_SAFE_INTEGER);
+    return originalCompanyOrder.get(nameA) - originalCompanyOrder.get(nameB);
+  });
+  const companyTierNames = {
+    S: ['OpenAI','Anthropic','Google','Meta','xAI'],
+    A: ['Netflix','Airbnb','NVIDIA','Databricks','Stripe','Jane Street','Hudson River Trading','Figma','Waymo','LinkedIn','Two Sigma'],
+    B: ['Apple','Uber','Snowflake','Datadog','Microsoft','Pinterest','Lyft','Scale AI','Ramp','Rippling','Amazon','Palantir','Citadel','D. E. Shaw','IMC','Optiver','Jump Trading','Roblox','Reddit','Spotify','Coinbase','DoorDash','Instacart','Brex','Plaid','Robinhood','Square','Affirm','Confluent','MongoDB','Dropbox','Asana','Duolingo','Applied Intuition']
+  };
+  const companyTierSets = Object.fromEntries(Object.entries(companyTierNames).map(([tier, names]) => [tier, new Set(names)]));
+  const finalCompanyRank = new Map(companies.map(([name], index) => [name, index]));
+  const companyTiers = [
+    ['S','Frontier'],['A','Exceptional'],['B','Excellent'],['C','Strong'],['D','Other']
+  ];
+  const tierForCompany = (name) => {
+    if (companyTierSets.S.has(name)) return 'S';
+    if (companyTierSets.A.has(name)) return 'A';
+    if (companyTierSets.B.has(name)) return 'B';
+    const rank = finalCompanyRank.get(name);
+    if (rank < 130) return 'C';
+    return 'D';
+  };
   // Verified 2026-08-30: each mapped slug resolves to a real Prachub company.
   const prachubSlugs = new Map([
     ['Uber','uber'],['LinkedIn','linkedin'],['Bytedance','bytedance'],['Airbnb','airbnb'],['Bloomberg','bloomberg'],['Microsoft','microsoft'],['DoorDash','doordash'],['Google','google'],['Meta','meta'],['Pinterest','pinterest'],
@@ -340,7 +383,7 @@
   function render(query = '') {
     const normalized = query.trim().toLowerCase();
     const visible = companies.filter(([name]) => name.toLowerCase().includes(normalized));
-    grid.replaceChildren(...visible.map(([name, tagId, domain]) => {
+    const makeTile = ([name, tagId, domain]) => {
       const tile = document.createElement('article');
       tile.className = 'company-tile';
       tile.dataset.company = name;
@@ -387,7 +430,25 @@
       label.addEventListener('click', () => selectCompany(name, tagId, label));
       tile.append(label);
       return tile;
-    }));
+    };
+    grid.replaceChildren(...companyTiers.map(([tier, description]) => {
+      const tierCompanies = visible.filter(([name]) => tierForCompany(name) === tier);
+      if (!tierCompanies.length) return null;
+      const tierOrder = companyTierNames[tier];
+      if (tierOrder) tierCompanies.sort(([nameA], [nameB]) => tierOrder.indexOf(nameA) - tierOrder.indexOf(nameB));
+      const section = document.createElement('section');
+      section.className = 'company-tier';
+      section.dataset.tier = tier;
+      section.setAttribute('aria-labelledby', `company-tier-${tier}`);
+      const heading = document.createElement('header');
+      heading.className = 'company-tier-heading';
+      heading.innerHTML = `<h2 id="company-tier-${tier}">${tier}</h2><span>${description}</span><small>${tierCompanies.length}</small>`;
+      const tiles = document.createElement('div');
+      tiles.className = 'company-tier-companies';
+      tiles.replaceChildren(...tierCompanies.map(makeTile));
+      section.append(heading, tiles);
+      return section;
+    }).filter(Boolean));
     count.textContent = `${visible.length} ${visible.length === 1 ? 'company' : 'companies'}`;
   }
   search.addEventListener('input', () => render(search.value));
